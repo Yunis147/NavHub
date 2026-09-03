@@ -1,0 +1,18 @@
+# Repo-wide ignores. Per-folder .gitignore files (backend/, frontend/, robot_ws/)
+# already cover node_modules, build/install/log, dist, and __pycache__.
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Secrets & logs at the repo root
+.env
+.env.*
+*.log
+
+# Claude Code harness config — machine-specific (absolute paths, local settings).
+# Not part of the project; regenerated per machine.
+.claude/

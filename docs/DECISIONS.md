@@ -313,3 +313,39 @@ Format:
   noted here so it's not mistaken for correct.
 - **Reasoning & Trade-offs:** Minimal edit to make the existing `odom.py` runnable; Rule-2
   protected file itself unchanged.
+
+### [2026-09-11] UI restructure: multi-page + map saving + WASD buttons
+- **Context:** Phase 2 UI cramped teleop + mapping on one page; no "Save Map" button after 
+  mapping completes; nipplejs joystick not responsive on real robot; needed immediate stop + 
+  clear instructions.
+- **Choice Made:** 
+  (1) Added react-router-dom with top navbar showing Teleoperation | Mapping tabs (NavLink with active styling).
+  (2) Split into two pages: TeleopPage (controls only) and MappingPage (live SLAM + save).
+  (3) Replaced nipplejs joystick with WASDControls component: 3×3 button grid (Q/W/E, A/S/D, X) 
+      + press-and-hold interaction + keyboard shortcuts (W/A/S/D/Q/E/X keys still work).
+  (4) Added X button for immediate stop (publishes zero).
+  (5) Added TeleopInstructions panel with clear legend.
+  (6) Implemented map saving: POST /api/maps/save spawns `ros2 run nav2_map_server map_saver_cli`, 
+      stores Map model in MongoDB with unique index on name (duplicate-name prevention).
+  (7) MappingControls now shows name input + Save button after mapping stops.
+- **Reasoning & Trade-offs:** 
+  - Separate pages = cleaner UX, room for Phase 4/5 navigation/waypoint tabs.
+  - WASD buttons = more reliable than analog joystick over LAN (discrete on/off state, no 
+    sensitivity tuning, works on touchscreen and keyboard).
+  - X stop = accessible immediate halt (always available, doesn't require releasing other keys).
+  - Map saving completes Phase 3's persistence requirement early; enables multi-map workflow.
+  - MongoDB Map model reuses ARCHITECTURE.md §11 schema; unique index prevents duplicates at DB level 
+    (not just UI validation).
+  - Router adds ~90KB to bundle but tree-shakeable; enables future multi-page expansion.
+  - Removed nipplejs (-40KB); no longer needed.
+  - KeyboardTeleop hook still runs globally on both pages (WASD keys work everywhere).
+  - Navbar always visible; ConnectionStatus shows WebSocket state at top right.
+  - Both page layouts use same max-width container for consistency.
+- **Files changed:** 
+  - New: Navbar, WASDControls, TeleopInstructions, TeleopPage, MappingPage, Map.js model.
+  - Modified: main.tsx (BrowserRouter), App.tsx (Routes), MappingControls (save UI), 
+    api.ts (saveMap/listMaps), routes/index.js (POST /api/maps/save, GET /api/maps).
+  - Deleted: Joystick.tsx, nipplejs dependency.
+  - Created: backend/maps/ directory.
+  - Updated: backend/.gitignore (exclude *.pgm, *.yaml in maps/).
+

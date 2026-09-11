@@ -50,3 +50,26 @@ export async function startMapping(token: string): Promise<void> {
 export async function stopMapping(): Promise<void> {
   await postJson('/api/mapping/stop');
 }
+
+// --- Map persistence (Phase 3) ---
+
+export async function saveMap(token: string, name: string): Promise<void> {
+  const r = await postJson('/api/maps/save', { token, name });
+  if (!r.ok) {
+    const body = (await r.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `save map ${r.status}`);
+  }
+}
+
+export interface MapInfo {
+  name: string;
+  createdAt: string;
+  resolution: number;
+  origin: number[];
+}
+
+export async function listMaps(): Promise<MapInfo[]> {
+  const r = await fetch(`${API_URL}/api/maps`);
+  if (!r.ok) throw new Error(`list maps ${r.status}`);
+  return (await r.json()) as MapInfo[];
+}

@@ -93,14 +93,15 @@ export function WASDControls({ enabled }: { enabled: boolean }) {
     }
   };
 
-  const Button = ({ label, keys }: { label: string; keys?: string }) => (
+  const Button = ({ label, keys, icon }: { label: string; keys?: string; icon?: string }) => (
     <button
       type="button"
       className={`
-        rounded-lg px-3 py-4 font-semibold text-white transition-all select-none
-        ${label === 'X' ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'}
-        ${!enabled ? 'cursor-not-allowed opacity-40' : 'active:scale-95 active:shadow-lg'}
-        font-mono text-lg
+        group relative flex flex-col items-center justify-center rounded-xl px-4 py-6 font-semibold text-white transition-all select-none shadow-lg
+        ${label === 'X'
+          ? 'bg-gradient-to-br from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 ring-2 ring-red-900/50'
+          : 'bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 ring-1 ring-blue-900/50'}
+        ${!enabled ? 'cursor-not-allowed opacity-40' : 'active:scale-95 active:shadow-xl hover:shadow-2xl'}
       `}
       onMouseDown={() => onMouseDown(label.toLowerCase())}
       onMouseUp={() => onMouseUp(label.toLowerCase())}
@@ -110,29 +111,30 @@ export function WASDControls({ enabled }: { enabled: boolean }) {
       disabled={!enabled}
       title={keys}
     >
-      {label}
+      <span className="text-2xl font-bold">{label}</span>
+      {icon && <span className="mt-1 text-xs opacity-75">{icon}</span>}
     </button>
   );
 
   return (
-    <div className="rounded-lg bg-slate-800 px-6 py-6">
+    <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-6 shadow-lg">
       <div className="mb-4 text-center text-sm font-semibold text-slate-300">
-        Press and hold buttons or use keyboard
+        Press and hold to move
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3">
         {/* Row 1: Q W E */}
-        <Button label="Q" keys="Q key: Rotate left" />
-        <Button label="W" keys="W key: Forward" />
-        <Button label="E" keys="E key: Rotate right" />
+        <Button label="Q" keys="Q key: Rotate left" icon="↺" />
+        <Button label="W" keys="W key: Forward" icon="↑" />
+        <Button label="E" keys="E key: Rotate right" icon="↻" />
 
         {/* Row 2: A S D */}
-        <Button label="A" keys="A key: Strafe left" />
-        <Button label="S" keys="S key: Backward" />
-        <Button label="D" keys="D key: Strafe right" />
+        <Button label="A" keys="A key: Strafe left" icon="←" />
+        <Button label="S" keys="S key: Backward" icon="↓" />
+        <Button label="D" keys="D key: Strafe right" icon="→" />
 
         {/* Row 3: Empty, X, Empty */}
         <div />
-        <Button label="X" keys="X key: Immediate stop" />
+        <Button label="X" keys="X key: Emergency stop" icon="■" />
         <div />
       </div>
     </div>

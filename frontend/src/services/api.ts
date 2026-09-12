@@ -73,3 +73,19 @@ export async function listMaps(): Promise<MapInfo[]> {
   if (!r.ok) throw new Error(`list maps ${r.status}`);
   return (await r.json()) as MapInfo[];
 }
+
+export async function getMapImageBuffer(name: string): Promise<ArrayBuffer> {
+  const r = await fetch(`${API_URL}/api/maps/${name}/image`);
+  if (!r.ok) throw new Error(`get map image ${r.status}`);
+  return r.arrayBuffer();
+}
+
+export async function saveMapImageBuffer(name: string, data: Uint8Array): Promise<void> {
+  const blob = new Blob([data.buffer as ArrayBuffer], { type: 'application/octet-stream' });
+  const r = await fetch(`${API_URL}/api/maps/${name}/image`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: blob,
+  });
+  if (!r.ok) throw new Error(`save map image ${r.status}`);
+}

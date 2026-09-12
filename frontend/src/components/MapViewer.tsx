@@ -5,22 +5,28 @@ import type { OccupancyGrid } from '../hooks/useSlamMap';
 // Renders a live nav_msgs/OccupancyGrid to a canvas, with the robot drawn as an oriented
 // arrow. ROS grids are row-major with row 0 at the MIN-y edge and +y up, so we flip the
 // canvas Y so the map isn't drawn upside down.
-// ponytail: plain JSON grid + full redraw per update (throttled ~1 Hz). Fine for a room-sized
-// map; if a large map stutters over the LAN, switch the /map subscription to cbor compression.
+// Updated: fills parent container instead of fixed 360×360.
 
 function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2D | null): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const cw = canvas.width;
   const ch = canvas.height;
-  ctx.fillStyle = '#0f172a';
+
+  // Dark background
+  ctx.fillStyle = '#0a0f1a';
   ctx.fillRect(0, 0, cw, ch);
 
   if (!grid || grid.info.width === 0 || grid.info.height === 0) {
+    // Waiting state with styled message
+    ctx.fillStyle = '#475569';
+    ctx.font = '16px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Waiting for map data...', cw / 2, ch / 2 - 10);
     ctx.fillStyle = '#64748b';
     ctx.font = '14px ui-sans-serif, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('waiting for /map — start mapping and drive', cw / 2, ch / 2);
+    ctx.fillText('Start mapping and drive to see the map', cw / 2, ch / 2 + 15);
     return;
   }
 
@@ -36,7 +42,7 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   const img = octx.createImageData(W, H);
   for (let i = 0; i < W * H; i++) {
     const v = d[i];
-    const g = v < 0 ? 90 : 255 - Math.round((v / 100) * 255); // unknown gray; free white; occ black
+    const g = v < 0 ? 60 : 255 - Math.round((v / 100) * 255); // unknown darker gray; free white; occ black
     const o = i * 4;
     img.data[o] = g;
     img.data[o + 1] = g;
@@ -58,10 +64,11 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   ctx.scale(scale, -scale); // grid-pixel units, +y up
   ctx.drawImage(off, 0, 0);
 
+  // Draw robot as an oriented arrow
   if (pose) {
     const gx = (pose.x - origin.position.x) / res; // world metres -> grid pixels
     const gy = (pose.y - origin.position.y) / res;
-    const k = 9 / scale; // ~9 screen px regardless of zoom
+    const k = 12 / scale; // arrow size ~12 screen px regardless of zoom
     ctx.translate(gx, gy);
     ctx.rotate(pose.yaw);
     ctx.beginPath();
@@ -69,10 +76,25 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
     ctx.lineTo(-k * 0.6, k * 0.6);
     ctx.lineTo(-k * 0.6, -k * 0.6);
     ctx.closePath();
-    ctx.fillStyle = '#38bdf8';
+
+    // Gradient fill for robot arrow
+    const grad = ctx.createLinearGradient(-k, 0, k, 0);
+    grad.addColorStop(0, '#3b82f6');
+    grad.addColorStop(1, '#60a5fa');
+    ctx.fillStyle = grad;
     ctx.fill();
+
+    // Outline
+    ctx.strokeStyle = '#1e40af';
+    ctx.lineWidth = 1.5 / scale;
+    ctx.stroke();
   }
   ctx.restore();
+
+  // Draw grid border
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(offX, offY, dw, dh);
 }
 
 export function MapViewer({
@@ -82,17 +104,39 @@ export function MapViewer({
   grid: OccupancyGrid | null;
   robotPose: Pose2D | null;
 }) {
-  const ref = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Resize canvas to fill container
   useEffect(() => {
-    if (ref.current) draw(ref.current, grid, robotPose);
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resize = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      draw(canvas, grid, robotPose);
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [grid, robotPose]);
+
+  // Redraw when data changes
+  useEffect(() => {
+    if (canvasRef.current) draw(canvasRef.current, grid, robotPose);
   }, [grid, robotPose]);
 
   return (
-    <canvas
-      ref={ref}
-      width={360}
-      height={360}
-      className="w-full rounded-lg bg-slate-950 ring-1 ring-slate-800"
-    />
+    <div ref={containerRef} className="h-full w-full rounded-xl bg-slate-900 ring-1 ring-slate-700 shadow-2xl">
+      <canvas ref={canvasRef} className="h-full w-full rounded-xl" />
+    </div>
   );
 }

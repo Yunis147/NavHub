@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import TeleopPage from './pages/TeleopPage';
 import MappingPage from './pages/MappingPage';
+import MapsPage from './pages/MapsPage';
 import { KeyboardTeleop } from './components/KeyboardTeleop';
 import { useRos } from './services/ros';
 import { useControl } from './hooks/useControl';
@@ -23,6 +24,7 @@ export default function App() {
       <Routes>
         <Route path="/teleop" element={<TeleopPage />} />
         <Route path="/mapping" element={<MappingPage />} />
+        <Route path="/maps" element={<MapsPage />} />
         <Route path="/" element={<Navigate to="/teleop" replace />} />
       </Routes>
     </div>

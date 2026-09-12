@@ -4,7 +4,7 @@ import { useControl } from '../hooks/useControl';
 import { useServerState } from '../hooks/useServerState';
 import { useTeleop } from '../hooks/useTeleop';
 import { useSlamMap } from '../hooks/useSlamMap';
-import { startNavigation, stopNavigation, listMaps, type MapInfo } from '../services/api';
+import { startNavigation, stopNavigation, listMaps, type MapInfo, listWaypoints, saveWaypoint, deleteWaypoint, type WaypointInfo } from '../services/api';
 import { publishInitialPose, sendNavGoal } from '../services/nav';
 import type { Pose2D } from '../lib/tf2d';
 import { ControlBanner } from '../components/ControlBanner';
@@ -27,16 +27,60 @@ export default function NavigationPage() {
   const [busy, setBusy] = useState(false);
   const [navError, setNavError] = useState<string | null>(null);
 
+  const [waypoints, setWaypoints] = useState<WaypointInfo[]>([]);
+  const [recordingWaypoint, setRecordingWaypoint] = useState(false);
+  const [newWaypointName, setNewWaypointName] = useState('');
+
   const navigating = server.mode === 'navigating';
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
   const teleop = useTeleop(canDrive);
 
+  // Load maps on mount
   useEffect(() => {
     listMaps().then(data => {
       setMaps(data);
       if (data.length > 0 && !selectedMap) setSelectedMap(data[0].name);
     }).catch(console.error);
   }, []);
+
+  // Load waypoints when map changes
+  useEffect(() => {
+    if (selectedMap) {
+      listWaypoints(selectedMap).then(setWaypoints).catch(console.error);
+    } else {
+      setWaypoints([]);
+    }
+  }, [selectedMap]);
+
+  const handleRecordWaypoint = async () => {
+    if (!selectedMap || !robotPose || !newWaypointName.trim()) return;
+    try {
+      await saveWaypoint(selectedMap, newWaypointName.trim(), robotPose.x, robotPose.y, robotPose.yaw);
+      setNewWaypointName('');
+      setRecordingWaypoint(false);
+      // Reload waypoints
+      const w = await listWaypoints(selectedMap);
+      setWaypoints(w);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : 'failed to save waypoint');
+    }
+  };
+
+  const handleDeleteWaypoint = async (id: string) => {
+    if (!selectedMap) return;
+    try {
+      await deleteWaypoint(selectedMap, id);
+      const w = await listWaypoints(selectedMap);
+      setWaypoints(w);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const handleDispatchWaypoint = (wp: WaypointInfo) => {
+    handleSetGoalPose(wp);
+  };
 
   const onEStop = useCallback(() => {
     // Phase 4: cancel the goal in addition to zeroing velocity
@@ -185,20 +229,20 @@ export default function NavigationPage() {
 
           {/* Interaction Mode */}
           {navigating && (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden">
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden flex-shrink-0">
                <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Interaction
                 </div>
               </div>
               <div className="p-4 space-y-2">
-                <button 
+                <button
                   onClick={() => setInteractMode('view')}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'view' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
                 >
                   👁️ View Only
                 </button>
-                <button 
+                <button
                   onClick={() => setInteractMode('initial_pose')}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'initial_pose' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
                 >
@@ -211,15 +255,82 @@ export default function NavigationPage() {
                   🎯 Send Nav Goal
                 </button>
                 {navGoalStatus && (
-                  <div className="mt-2 text-xs font-medium text-blue-400 bg-blue-900/20 px-3 py-2 rounded">
-                    Goal Status: {navGoalStatus}
+                  <div className="mt-2 text-xs font-medium text-blue-400 bg-blue-900/20 px-3 py-2 rounded shadow-inner">
+                    🚀 Status: {navGoalStatus}
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          <EStopButton onStop={onEStop} />
+          {/* Waypoints Section */}
+          {navigating && (
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden flex flex-col min-h-[250px]">
+              <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
+                  🚩 Waypoints
+                </div>
+                {!recordingWaypoint && (
+                   <button
+                     onClick={() => setRecordingWaypoint(true)}
+                     disabled={!robotPose}
+                     className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded shadow disabled:opacity-50 transition-colors"
+                   >
+                     + Record Here
+                   </button>
+                )}
+              </div>
+              <div className="p-4 flex flex-col gap-3 overflow-hidden flex-1">
+                {recordingWaypoint && (
+                  <div className="bg-slate-800 rounded-lg p-3 border border-indigo-500/50 shadow-inner">
+                    <div className="text-xs text-slate-300 mb-2">Saving current pose...</div>
+                    <div className="flex gap-2">
+                       <input
+                         autoFocus
+                         type="text"
+                         placeholder="Waypoint Name"
+                         value={newWaypointName}
+                         onChange={(e) => setNewWaypointName(e.target.value)}
+                         className="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+                         onKeyDown={(e) => e.key === 'Enter' && handleRecordWaypoint()}
+                       />
+                       <button onClick={handleRecordWaypoint} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-sm shadow">Save</button>
+                       <button onClick={() => { setRecordingWaypoint(false); setNewWaypointName(''); }} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-sm">Cancel</button>
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-y-auto pr-1 space-y-2 flex-1 custom-scrollbar">
+                  {waypoints.length === 0 && !recordingWaypoint ? (
+                    <div className="text-xs text-slate-500 text-center py-4">No waypoints saved for this map.</div>
+                  ) : (
+                    waypoints.map(wp => (
+                      <div key={wp.id} className="flex flex-col gap-2 rounded-lg bg-gradient-to-br from-slate-800 to-slate-800/80 p-3 shadow-md border border-slate-700/50 hover:border-indigo-500/50 transition-all group">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-white tracking-wide">{wp.name}</span>
+                          <button onClick={() => handleDeleteWaypoint(wp.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Waypoint">
+                            ✖
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                           <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full shadow-inner border border-slate-700">[{wp.x.toFixed(2)}, {wp.y.toFixed(2)}]</span>
+                           <button
+                             onClick={() => handleDispatchWaypoint(wp)}
+                             className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-md shadow-lg shadow-blue-900/50 flex flex-row items-center gap-1 transition-all active:scale-95"
+                           >
+                              <span>Go</span> <span>→</span>
+                           </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <EStopButton onStop={onEStop} />
+          </div>
         </div>
       </div>
 

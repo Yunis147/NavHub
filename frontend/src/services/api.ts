@@ -103,3 +103,32 @@ export async function saveMapImageBuffer(name: string, data: Uint8Array): Promis
   });
   if (!r.ok) throw new Error(`save map image ${r.status}`);
 }
+
+// --- Waypoints (Phase 5) ---
+export interface WaypointInfo {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  yaw: number;
+  createdAt: string;
+}
+
+export async function listWaypoints(mapName: string): Promise<WaypointInfo[]> {
+  const r = await fetch(`${API_URL}/api/maps/${mapName}/waypoints`);
+  if (!r.ok) throw new Error(`list waypoints ${r.status}`);
+  return r.json();
+}
+
+export async function saveWaypoint(mapName: string, name: string, x: number, y: number, yaw: number): Promise<void> {
+  const r = await postJson(`/api/maps/${mapName}/waypoints`, { name, x, y, yaw });
+  if (!r.ok) {
+    const body = (await r.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `save waypoint ${r.status}`);
+  }
+}
+
+export async function deleteWaypoint(mapName: string, id: string): Promise<void> {
+  const r = await fetch(`${API_URL}/api/maps/${mapName}/waypoints/${id}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(`delete waypoint ${r.status}`);
+}

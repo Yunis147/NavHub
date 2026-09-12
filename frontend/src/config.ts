@@ -11,9 +11,9 @@ export const CMD_VEL_TOPIC = '/cmd_vel';
 
 // Teleop tuning. Conservative caps for Phase 1 — these are the physical-speed knobs
 // (ponytail: leave the constants; a real base needs tuning a minimal model can't see).
-export const PUBLISH_HZ = 10;
-export const MAX_LINEAR = 0.2; // m/s
-export const MAX_ANGULAR = 0.6; // rad/s
+export const PUBLISH_HZ = 15;
+export const MAX_LINEAR = 0.25; // m/s
+export const MAX_ANGULAR = 0.8; // rad/s
 
 // Control-token heartbeat cadence. Must be well under the backend's 3 s token TTL.
 export const HEARTBEAT_MS = 1000;

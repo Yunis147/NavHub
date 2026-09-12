@@ -204,6 +204,74 @@ router.put('/maps/:name/image', raw({ type: 'application/octet-stream', limit: '
   }
 });
 
+// --- Waypoints (Phase 5) ---
+
+router.get('/maps/:mapName/waypoints', async (req, res) => {
+  try {
+    const { Map } = await import('../models/Map.js');
+    const { Waypoint } = await import('../models/Waypoint.js');
+
+    const map = await Map.findOne({ name: req.params.mapName });
+    if (!map) return res.status(404).json({ error: 'map not found' });
+
+    const waypoints = await Waypoint.find({ mapId: map._id }).sort({ createdAt: 1 });
+    res.json(waypoints.map(w => ({
+      id: w._id,
+      name: w.name,
+      x: w.x,
+      y: w.y,
+      yaw: w.yaw,
+      createdAt: w.createdAt
+    })));
+  } catch (err) {
+    console.error('[api/waypoints] error listing:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.post('/maps/:mapName/waypoints', async (req, res) => {
+  const { name, x, y, yaw } = req.body;
+  if (!name || x === undefined || y === undefined || yaw === undefined) {
+    return res.status(400).json({ error: 'name, x, y, yaw required' });
+  }
+
+  try {
+    const { Map } = await import('../models/Map.js');
+    const { Waypoint } = await import('../models/Waypoint.js');
+
+    const map = await Map.findOne({ name: req.params.mapName });
+    if (!map) return res.status(404).json({ error: 'map not found' });
+
+    const waypoint = new Waypoint({
+      mapId: map._id,
+      name,
+      x,
+      y,
+      yaw
+    });
+    await waypoint.save();
+
+    res.json({ ok: true, id: waypoint._id });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'waypoint name exists for this map' });
+    }
+    console.error('[api/waypoints] error saving:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.delete('/maps/:mapName/waypoints/:id', async (req, res) => {
+  try {
+    const { Waypoint } = await import('../models/Waypoint.js');
+    await Waypoint.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api/waypoints] error deleting:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // --- Navigation (Phase 4) ---
 
 router.post('/navigation/start', async (req, res) => {

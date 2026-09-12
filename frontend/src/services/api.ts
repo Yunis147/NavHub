@@ -51,6 +51,20 @@ export async function stopMapping(): Promise<void> {
   await postJson('/api/mapping/stop');
 }
 
+// --- Navigation (Phase 4) ---
+
+export async function startNavigation(token: string, mapName: string): Promise<void> {
+  const r = await postJson('/api/navigation/start', { token, mapName });
+  if (!r.ok) {
+    const body = (await r.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `navigation start ${r.status}`);
+  }
+}
+
+export async function stopNavigation(): Promise<void> {
+  await postJson('/api/navigation/stop');
+}
+
 // --- Map persistence (Phase 3) ---
 
 export async function saveMap(token: string, name: string): Promise<void> {

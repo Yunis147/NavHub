@@ -77,8 +77,8 @@ export function isController(token) {
 // mapping | navigating are mutually exclusive. Phase 2 adds mapping; Phase 4 adds navigating.
 
 export function startMapping() {
-  if (state.mode === 'navigating') return { ok: false, reason: 'navigating' };
-  if (state.mode === 'mapping') return { ok: false, reason: 'already-mapping' };
+  if (state.mode === 'navigating') return { ok: false, reason: 'navigating is active' };
+  if (state.mode === 'mapping') return { ok: false, reason: 'already mapping' };
   state.mode = 'mapping';
   return { ok: true };
 }
@@ -87,5 +87,17 @@ export function startMapping() {
 // controller can never leave SLAM stuck running.
 export function stopMapping() {
   if (state.mode === 'mapping') state.mode = 'idle';
+  return { ok: true };
+}
+
+export function startNavigation() {
+  if (state.mode === 'mapping') return { ok: false, reason: 'mapping is active' };
+  if (state.mode === 'navigating') return { ok: false, reason: 'already navigating' };
+  state.mode = 'navigating';
+  return { ok: true };
+}
+
+export function stopNavigation() {
+  if (state.mode === 'navigating') state.mode = 'idle';
   return { ok: true };
 }

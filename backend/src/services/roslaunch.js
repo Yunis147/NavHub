@@ -6,11 +6,12 @@ import * as procs from './processManager.js';
 // (systemd, Phase 6). `exec` replaces the shell with ros2 so ros2 is the process-group
 // leader — Rule 11's group-kill in processManager then tears down the whole node tree.
 // stdio is inherited (see processManager), so launch logs/errors surface in the backend console.
-export function launch(name, pkg, file) {
+export function launch(name, pkg, file, args = []) {
+  const argsString = args.length > 0 ? ` ${args.join(' ')}` : '';
   const cmd = [
     `source '${ROBOT.rosSetup}'`,
     `source '${ROBOT.wsSetup}'`,
-    `exec ros2 launch ${pkg} ${file}`,
+    `exec ros2 launch ${pkg} ${file}${argsString}`,
   ].join(' && ');
   return procs.start(name, 'bash', ['-c', cmd]);
 }

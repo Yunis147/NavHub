@@ -25,6 +25,9 @@ export const ROBOT = {
   // SLAM mapping launch (Phase 2): `ros2 launch nav2 slam.py`, torn down as a tree (Rule 11).
   slam: { procName: 'slam', package: 'nav2', launchFile: 'slam.py' },
 
+  // Navigation launch (Phase 4): `ros2 launch nav2 nav2.py`, torn down as a tree (Rule 11).
+  nav2: { procName: 'nav2', package: 'nav2', launchFile: 'nav2.py' },
+
   // roslaunch.js sources these before `ros2 launch`, so launches work regardless of how the
   // backend itself was started (sourced shell, or systemd in Phase 6). Overridable for odd setups.
   rosSetup: process.env.ROS_SETUP || `/opt/ros/${process.env.ROS_DISTRO || 'jazzy'}/setup.bash`,

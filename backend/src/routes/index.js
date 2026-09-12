@@ -1,8 +1,15 @@
-import { Router } from 'express';
+import { Router, raw } from 'express';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as control from '../services/controlState.js';
 import * as roslaunch from '../services/roslaunch.js';
 import * as procs from '../services/processManager.js';
 import { ROBOT } from '../config/robot.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const mapsDir = path.join(__dirname, '../../maps');
 
 export const router = Router();
 
@@ -163,4 +170,83 @@ router.post('/maps/save', async (req, res) => {
     console.error(`[api/maps/save] error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
+});
+
+// --- Map Image Binary endpoints ---
+
+router.get('/maps/:name/image', (req, res) => {
+  const pgmPath = path.join(mapsDir, `${req.params.name}.pgm`);
+  if (!fs.existsSync(pgmPath)) {
+    return res.status(404).json({ error: 'Map image not found' });
+  }
+  res.setHeader('Content-Type', 'application/octet-stream');
+  fs.createReadStream(pgmPath).pipe(res);
+});
+
+router.put('/maps/:name/image', raw({ type: 'application/octet-stream', limit: '50mb' }), (req, res) => {
+  if (!Buffer.isBuffer(req.body)) {
+    return res.status(400).json({ error: 'Expected binary body' });
+  }
+  
+  // No strict token check here to allow map editing while idle. 
+  // However, check that SLAM is not actively overwriting it (Rule 8).
+  if (control.publicState().mode === 'mapping') {
+    return res.status(409).json({ error: 'Cannot edit map while SLAM is actively running' });
+  }
+
+  const pgmPath = path.join(mapsDir, `${req.params.name}.pgm`);
+  try {
+    fs.writeFileSync(pgmPath, req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[api/maps/image] save error:`, err);
+    res.status(500).json({ error: 'Failed to write map image' });
+  }
+});
+
+// --- Navigation (Phase 4) ---
+
+router.post('/navigation/start', async (req, res) => {
+  const { token, mapName } = req.body;
+  
+  if (!token || !mapName) {
+    return res.status(400).json({ error: 'token and mapName required' });
+  }
+
+  if (!control.isController(token)) {
+    return res.status(409).json({ error: 'take control before starting navigation' });
+  }
+
+  // Find the map to get its yaml path
+  try {
+    const { Map } = await import('../models/Map.js');
+    const map = await Map.findOne({ name: mapName });
+    if (!map) {
+      return res.status(404).json({ error: 'map not found' });
+    }
+
+    const r = control.startNavigation();
+    if (!r.ok) return res.status(409).json({ error: `cannot start navigation (${r.reason})` });
+    
+    try {
+      // Pass the map parameter to the nav2.py launch file (Phase 4 multi-map support)
+      const mapArg = `map:='${map.yamlPath}'`;
+      const child = roslaunch.launch(ROBOT.nav2?.procName || 'nav2', ROBOT.nav2?.package || 'nav2', ROBOT.nav2?.launchFile || 'nav2.py', [mapArg]);
+      
+      child.on('exit', () => control.stopNavigation());
+    } catch (e) {
+      control.stopNavigation();
+      return res.status(500).json({ error: String(e?.message || e) });
+    }
+    
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[api/navigation/start] error: ${err.message}`);
+    res.status(500).json({ error: 'Failed to start navigation' });
+  }
+});
+
+router.post('/navigation/stop', (_req, res) => {
+  procs.stop(ROBOT.nav2?.procName || 'nav2'); 
+  res.json({ ok: true });
 });

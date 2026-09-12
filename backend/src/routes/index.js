@@ -10,6 +10,9 @@ import { ROBOT } from '../config/robot.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const mapsDir = path.join(__dirname, '../../maps');
+if (!fs.existsSync(mapsDir)) {
+  fs.mkdirSync(mapsDir, { recursive: true });
+}
 
 export const router = Router();
 

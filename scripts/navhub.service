@@ -1,6 +1,6 @@
 [Unit]
 Description=NavHub Web Backend and ROS 2 Bridge
-After=network.target mongod.service ros2-odom.service
+After=network.target mongod.service
 Wants=mongod.service
 
 [Service]

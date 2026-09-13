@@ -29,7 +29,6 @@ setup(
     entry_points={
         'console_scripts': [
             'odom = nav2.odom:main',
-            'laser_node = nav2.laser:main',
         ],
     },
 )

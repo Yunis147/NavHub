@@ -50,6 +50,7 @@ export function useSlamMap(ros: ROSLIB.Ros | null): {
       messageType: 'nav_msgs/OccupancyGrid',
       throttle_rate: MAP_THROTTLE_MS,
       queue_length: 1,
+      latch: true, // Attempt to request transient_local durability for Nav2 map_server
     });
     const onMap = (m: ROSLIB.Message) => setGrid(m as unknown as OccupancyGrid);
     mapTopic.subscribe(onMap);

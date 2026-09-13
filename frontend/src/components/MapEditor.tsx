@@ -115,6 +115,7 @@ export function MapEditor({ mapName, onClose }: MapEditorProps) {
       offCanvas.width = imageSize.width;
       offCanvas.height = imageSize.height;
       const octx = offCanvas.getContext('2d', { willReadFrequently: true })!;
+      octx.imageSmoothingEnabled = false;
 
       // 2. Draw the base map
       octx.drawImage(htmlImageElement, 0, 0);
@@ -205,7 +206,7 @@ export function MapEditor({ mapName, onClose }: MapEditorProps) {
                           points={stroke.points}
                           stroke={stroke.tool === 'draw' ? 'black' : '#FEFEFE'}
                           strokeWidth={stroke.size}
-                          tension={0.5}
+                          tension={0}
                           lineCap="round"
                           lineJoin="round"
                         />

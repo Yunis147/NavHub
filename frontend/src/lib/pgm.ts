@@ -85,8 +85,15 @@ export function encodePgm(img: ImageData, comment = 'CREATOR: NavHub Map Editor'
   let srcOffset = 0;
 
   for (let i = 0; i < img.width * img.height; i++) {
-    // Just grab red channel (assuming it was drawn as shades of gray)
-    result[destOffset++] = img.data[srcOffset];
+    const r = img.data[srcOffset];
+    // Threshold to strictly trinary (0=Occupied, 254=Free, 205=Unknown) to eliminate anti-aliasing artifacts
+    let val = 205;
+    if (r < 100) {
+      val = 0;
+    } else if (r > 230) {
+      val = 254;
+    }
+    result[destOffset++] = val;
     srcOffset += 4;
   }
 

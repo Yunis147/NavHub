@@ -55,14 +55,6 @@ def generate_launch_description():
         arguments=['0.01', '0.0', '0.6', '1.57', '0.0', '0.0', 'base_link', 'laser']
     )
 
-    # Footprint to Link TF (identity)
-    static_tf_footprint = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='footprint_to_link_tf',
-        arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', 'base_footprint', 'base_link']
-    )
-
     nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -80,6 +72,5 @@ def generate_launch_description():
         rplidar_node,
         laser_filter_node,
         static_tf_laser,
-        static_tf_footprint,
         nav2_launch
     ])

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useRos } from '../services/ros';
 import { useControl } from '../hooks/useControl';
 import { useServerState } from '../hooks/useServerState';
-import { useTeleop } from '../hooks/useTeleop';
+import { useTeleopContext } from '../contexts/TeleopContext';
 import { useSlamMap } from '../hooks/useSlamMap';
 import { ControlBanner } from '../components/ControlBanner';
 import { MappingControls } from '../components/MappingControls';
@@ -17,7 +17,7 @@ export default function MappingPage() {
   const { grid, robotPose } = useSlamMap(ros);
 
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
-  const teleop = useTeleop(canDrive);
+  const teleop = useTeleopContext();
 
   const onEStop = useCallback(() => {
     teleop.stop();

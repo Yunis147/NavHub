@@ -9,7 +9,7 @@ NAVHUB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 export ROS_DISTRO=${ROS_DISTRO:-jazzy}
 ROS_SETUP="/opt/ros/${ROS_DISTRO}/setup.bash"
-WS_SETUP="${NAVHUB_DIR}/../robot_ws/install/setup.bash"
+WS_SETUP="${NAVHUB_DIR}/robot_ws/install/setup.bash"
 
 if [ -f "$ROS_SETUP" ]; then
     source "$ROS_SETUP"

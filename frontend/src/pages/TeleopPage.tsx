@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useRos } from '../services/ros';
 import { useControl } from '../hooks/useControl';
 import { useServerState } from '../hooks/useServerState';
-import { useTeleop } from '../hooks/useTeleop';
+import { useTeleopContext } from '../contexts/TeleopContext';
 import { ControlBanner } from '../components/ControlBanner';
 import { WASDControls } from '../components/WASDControls';
 import { TeleopInstructions } from '../components/TeleopInstructions';
@@ -15,7 +15,7 @@ export default function TeleopPage() {
   const { hasControl, take, give, error } = useControl();
 
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
-  const teleop = useTeleop(canDrive);
+  const teleop = useTeleopContext();
 
   const onEStop = useCallback(() => {
     teleop.stop();

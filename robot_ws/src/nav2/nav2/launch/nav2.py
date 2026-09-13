@@ -1,6 +1,7 @@
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -10,9 +11,15 @@ def generate_launch_description():
     # Resolve map/config from the installed package share dir so paths work on any
     # machine (Pi or laptop) regardless of username or checkout location.
     pkg_share   = get_package_share_directory('nav2')
-    map_file    = os.path.join(pkg_share, 'map', 'xle_room_map.yaml')
+    default_map_file = os.path.join(pkg_share, 'map', 'xle_room_map.yaml')
     filter_yaml = os.path.join(pkg_share, 'params', 'laser_filter.yaml')
     nav2_params = os.path.join(pkg_share, 'params', 'nav2_params.yaml')
+
+    map_arg = DeclareLaunchArgument(
+        'map',
+        default_value=default_map_file,
+        description='Full path to map yaml file to load'
+    )
 
     rplidar_node = Node(
         package='rplidar_ros',
@@ -62,13 +69,14 @@ def generate_launch_description():
             os.path.join(nav2_bringup_dir, 'launch', 'bringup_launch.py')
         ),
         launch_arguments={
-            'map': map_file,
+            'map': LaunchConfiguration('map'),
             'use_sim_time': 'false',
             'params_file': nav2_params
         }.items()
     )
 
     return LaunchDescription([
+        map_arg,
         rplidar_node,
         laser_filter_node,
         static_tf_laser,

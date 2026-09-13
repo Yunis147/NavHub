@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRos } from '../services/ros';
 import { useControl } from '../hooks/useControl';
 import { useServerState } from '../hooks/useServerState';
-import { useTeleop } from '../hooks/useTeleop';
+import { useTeleopContext } from '../contexts/TeleopContext';
 import { useSlamMap } from '../hooks/useSlamMap';
 import { startNavigation, stopNavigation, listMaps, type MapInfo, listWaypoints, saveWaypoint, deleteWaypoint, type WaypointInfo } from '../services/api';
 import { publishInitialPose, sendNavGoal } from '../services/nav';
@@ -33,7 +33,7 @@ export default function NavigationPage() {
 
   const navigating = server.mode === 'navigating';
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
-  const teleop = useTeleop(canDrive);
+  const teleop = useTeleopContext();
 
   // Load maps on mount
   useEffect(() => {
@@ -83,13 +83,18 @@ export default function NavigationPage() {
   };
 
   const onEStop = useCallback(() => {
-    // Phase 4: cancel the goal in addition to zeroing velocity
+    // Rule 6: E-Stop must cancel goal AND zero velocity AND kill Nav2 process tree.
+    // A single zero /cmd_vel is overwritten within ~50ms by Nav2's collision_monitor,
+    // so we must also kill the Nav2 process (stopNavigation) to truly halt the robot.
     teleop.stop();
     if (cancelGoalRef.current) {
       cancelGoalRef.current();
       cancelGoalRef.current = null;
-      setNavGoalStatus('Canceled via E-Stop');
     }
+    // Kill the Nav2 process tree (Rule 11 group kill) — this is the real stop mechanism.
+    // Even if the action cancel above is a no-op (C1), this guarantees the robot halts.
+    void stopNavigation();
+    setNavGoalStatus('EMERGENCY STOP');
     void give();
   }, [teleop, give]);
 

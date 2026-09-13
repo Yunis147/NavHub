@@ -1,85 +1,29 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { useRos } from '../services/ros';
-import { publishTwist, publishZero, type Twist2D } from '../services/cmdVel';
+import { useCallback, useRef } from 'react';
 import { MAX_LINEAR, MAX_ANGULAR } from '../config';
+import { useTeleopContext } from '../contexts/TeleopContext';
 
-// WASD button grid for teleop: 3x3 with on-screen buttons + keyboard shortcuts.
-// Each button is press-and-hold (or key-down). Keyboard reuses KeyboardTeleop logic.
+// WASD button grid for teleop: 3x3 with on-screen buttons.
+// Keyboard shortcuts are handled globally by KeyboardTeleop in App.tsx.
 // X = immediate stop (publishes zero).
 export function WASDControls({ enabled }: { enabled: boolean }) {
-  const { ros, status } = useRos();
-  const target = useRef<Twist2D>({ vx: 0, vy: 0, wz: 0 });
+  const teleop = useTeleopContext();
   const pressed = useRef<Set<string>>(new Set());
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
 
   const compute = useCallback(() => {
     const p = pressed.current;
-    const newTarget: Twist2D = {
+    teleop.setTwist({
       vx: (p.has('w') ? MAX_LINEAR : 0) - (p.has('s') ? MAX_LINEAR : 0),
       vy: (p.has('a') ? MAX_LINEAR : 0) - (p.has('d') ? MAX_LINEAR : 0),
       wz: (p.has('q') ? MAX_ANGULAR : 0) - (p.has('e') ? MAX_ANGULAR : 0),
-    };
-    target.current = newTarget;
-    if (ros && status === 'connected') {
-      publishTwist(ros, newTarget);
-    }
-  }, [ros, status]);
-
-  // Publish loop at ~10 Hz (reuse from useTeleop pattern)
-  useEffect(() => {
-    if (!ros || !enabled || status !== 'connected') return;
-    const id = setInterval(() => {
-      publishTwist(ros, target.current);
-    }, 100);
-    return () => {
-      clearInterval(id);
-      if (status === 'connected') publishZero(ros);
-    };
-  }, [ros, enabled, status]);
-
-  // Keyboard handling
-  useEffect(() => {
-    const keys = ['w', 'a', 's', 'd', 'q', 'e', 'x'] as const;
-    const down = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (!keys.includes(k as any) || !enabledRef.current) return;
-      e.preventDefault();
-
-      // X is immediate stop
-      if (k === 'x') {
-        pressed.current.clear();
-        target.current = { vx: 0, vy: 0, wz: 0 };
-        if (ros && status === 'connected') publishZero(ros);
-      } else if (!pressed.current.has(k)) {
-        pressed.current.add(k);
-        compute();
-      }
-    };
-
-    const up = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (!keys.includes(k as any)) return;
-      if (k !== 'x' && pressed.current.delete(k)) {
-        compute();
-      }
-    };
-
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-    };
-  }, [ros, status, compute]);
+    });
+  }, [teleop]);
 
   // Button press handlers (mouse/touch)
   const onMouseDown = (key: string) => {
     if (!enabled) return;
     if (key === 'x') {
       pressed.current.clear();
-      target.current = { vx: 0, vy: 0, wz: 0 };
-      if (ros && status === 'connected') publishZero(ros);
+      teleop.stop();
     } else {
       pressed.current.add(key);
       compute();

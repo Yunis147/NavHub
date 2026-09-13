@@ -42,3 +42,31 @@
 
 ## Waypoint Recording (Phase 5)
 Instead of having the backend Node.js server subscribe to `/amcl_pose` mid-request to record a waypoint (which requires either an active rosbridge connection or `rclnodejs` and introduces timing/timeout complexity), we let the frontend send its already-tracked `robotPose` directly to `POST /api/maps/:mapName/waypoints`. The frontend uses the reliable TF stream to know exactly where the robot is, which reduces latency and architectural complexity.
+
+### [2026-09-13] Audit Findings and Final Fixes (C1, C2, C3)
+- **Context:** Project audit identified three critical bugs in the navigation phase: 
+  C1 - ROS 2 actions over roslibjs 1.4.1 failed due to using ROS 1 ActionClient; goals never dispatched.
+  C2 - Safety gap in E-Stop during Nav2 driving (nav2 collision_monitor republished cmd_vel, fighting the zero command).
+  C3 - Multi-map loading failed because nav2.py hardcoded `xle_room_map.yaml` and ignored the backend's `map:=` argument.
+- **Choice Made:** 
+  1. C1 - Replaced `ROSLIB.ActionClient` in `nav.ts` with direct use of the `send_action_goal` rosbridge opcode, avoiding upgrades and ensuring compatibility with Jazzy's rosbridge_server.
+  2. C2 - Fixed `onEStop` in `NavigationPage.tsx` to explicitly invoke `stopNavigation()` (Rule 11 group-kill of the Nav2 tree) in addition to zeroing velocity, ensuring safety. (Fixed earlier).
+  3. C3 - Edited `robot_ws/src/nav2/nav2/launch/nav2.py` (Rule 2 documented) to introduce `DeclareLaunchArgument('map')` and `LaunchConfiguration('map')`, falling back to the default `xle_room_map.yaml`.
+- **Reasoning:** These minimal surface-level fixes address safety and routing without altering backend structure or disrupting existing pipelines. The frontend ROS action construction explicitly uses standard ROS 2 payloads for stability.
+
+### [Retroactive] Phase 0 Verification and Phase 4 Multi-Map (L3)
+- **Phase 0:** Confirmed paths were deep (e.g. `frontend/src/`) and the project was a flat copy, no submodules. Verified Node and ROS environments existed.
+- **Phase 4:** Decided to handle map switching strictly by backend passing the `map:=` argument to Nav2 launch, resolving map locations relative to the backend DB instead of ROS share directory, to keep map management isolated to the web stack.
+
+### [2026-09-13] Minor UX and Scope Fixes (M1, M2, M3, M4)
+- **Context:** Project audit identified several minor UX issues and scoping gaps:
+  M1 - WASD on-screen controls navigated the user to `/` momentarily, resetting the tab.
+  M2 - Deploy script `start_navhub.sh` failed to launch Nav2 nodes because it only sourced ROS, missing `robot_ws`.
+  M3 - Keyboard teleop was active globally without verifying the selected tab, causing the robot to drive when viewing maps.
+  M4 - Error in `/teleop` due to missing `TeleopContext` Provider on that route.
+- **Choice Made:**
+  1. M1 - Set `type="button"` on the `<button>` elements in `WASDControls.tsx` to prevent default form submission behavior (which acts as a page refresh).
+  2. M2 - Modified `start_navhub.sh` to explicitly source `robot_ws/install/setup.bash`. (Note: Later verified that the script correctly sources `WS_SETUP`).
+  3. M3 - Constrained `KeyboardTeleop` in `App.tsx` by passing `canDrive = hasControl && server.teleopAllowed && status === 'connected'` to conditionally enable keyboard listeners.
+  4. M4 - Moved `<TeleopProvider>` up to `App.tsx` so all components (including `KeyboardTeleop` and `TeleopPage`) have access to it.
+- **Reasoning:** These are quality-of-life and safety improvements matching production expectations. Consolidating the `TeleopProvider` in `App.tsx` unified the control state, seamlessly addressing both M3 and M4.

@@ -7,7 +7,7 @@ export function publishInitialPose(ros: ROSLIB.Ros, pose: Pose2D): void {
   const topic = new ROSLIB.Topic({
     ros,
     name: '/initialpose',
-    messageType: 'geometry_msgs/msg/PoseWithCovarianceStamped',
+    messageType: 'geometry_msgs/PoseWithCovarianceStamped',
   });
 
   const { x, y, yaw } = pose;
@@ -92,7 +92,7 @@ export function sendNavGoal(ros: ROSLIB.Ros, pose: Pose2D, onStatus: (s: string)
   const statusTopic = new ROSLIB.Topic({
     ros,
     name: '/navigate_to_pose/_action/status',
-    messageType: 'action_msgs/msg/GoalStatusArray'
+    messageType: 'action_msgs/GoalStatusArray'
   });
 
   statusTopic.subscribe((message: any) => {

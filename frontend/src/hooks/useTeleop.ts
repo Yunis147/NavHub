@@ -46,7 +46,8 @@ export function useTeleop(canDrive: boolean) {
   }, []);
   const setTwist = useCallback((t: Twist2D) => {
     target.current = { ...t };
-  }, []);
+    if (ros && status === 'connected') publishTwist(ros, target.current);
+  }, [ros, status]);
 
   return { live, setTranslate, setTwist, stop: zeroNow };
 }

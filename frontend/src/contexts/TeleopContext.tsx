@@ -1,7 +1,8 @@
 import React, { createContext, useContext } from 'react';
+import type { Twist2D } from '../services/cmdVel';
 
 export type TeleopContextType = {
-  setTwist: (linear: number, angular: number) => void;
+  setTwist: (t: Twist2D) => void;
   stop: () => void;
 };
 

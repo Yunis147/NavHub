@@ -11,12 +11,11 @@ import { EStopButton } from '../components/EStopButton';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
 export default function MappingPage() {
-  const { ros, status } = useRos();
+  const { ros } = useRos();
   const server = useServerState();
   const { hasControl, token, take, give, error } = useControl();
   const { grid, robotPose } = useSlamMap(ros);
 
-  const canDrive = hasControl && server.teleopAllowed && status === 'connected';
   const teleop = useTeleopContext();
 
   const onEStop = useCallback(() => {

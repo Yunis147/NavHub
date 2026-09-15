@@ -13,16 +13,15 @@ export function EStopButton({ onStop }: { onStop: () => void }) {
     <button
       type="button"
       onClick={stop}
-      className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-red-600 to-red-700 px-6 py-6 shadow-2xl ring-4 ring-red-900/40 transition-all hover:from-red-500 hover:to-red-600 hover:shadow-red-500/20 active:scale-[0.98]"
+      className="group relative w-full overflow-hidden rounded-xl bg-slate-800 border-2 border-red-900/50 px-6 py-4 shadow-lg transition-all hover:bg-slate-700 hover:border-red-500/50 active:scale-[0.98]"
     >
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
       <div className="relative flex items-center justify-center gap-3">
-        <svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
           <rect x="6" y="6" width="12" height="12" rx="1" />
         </svg>
         <div className="text-left">
-          <div className="text-2xl font-black tracking-wide text-white">EMERGENCY STOP</div>
-          <div className="text-xs font-medium text-red-200 opacity-90">Press to halt immediately</div>
+          <div className="text-lg font-bold tracking-wide text-red-100">Stop Robot</div>
+          <div className="text-xs font-medium text-slate-400">Halt motion immediately</div>
         </div>
       </div>
     </button>

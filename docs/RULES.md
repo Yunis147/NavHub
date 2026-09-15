@@ -173,3 +173,4 @@ Do not just publish raw messages to a goal topic.
 way to send a cancellation request when E-Stop is pressed. A raw topic
 publish can start a goal but can't tell you how it's going or stop it
 cleanly.
+13. Never append 'Co-Authored-By: Claude Code' or any AI attribution to git commits or pull requests; the user explicitly prefers solely their own attribution.

@@ -15,7 +15,7 @@ import { NavViewer } from '../components/NavViewer';
 
 // Navigation UI 
 export default function NavigationPage() {
-  const { ros, status } = useRos();
+  const { ros } = useRos();
   const server = useServerState();
   const { hasControl, token, take, give, error } = useControl();
   
@@ -32,7 +32,6 @@ export default function NavigationPage() {
   const [newWaypointName, setNewWaypointName] = useState('');
 
   const navigating = server.mode === 'navigating';
-  const canDrive = hasControl && server.teleopAllowed && status === 'connected';
   const teleop = useTeleopContext();
 
   // Load maps on mount

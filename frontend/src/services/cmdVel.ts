@@ -15,7 +15,7 @@ const topics = new WeakMap<ROSLIB.Ros, ROSLIB.Topic>();
 function cmdVel(ros: ROSLIB.Ros): ROSLIB.Topic {
   let t = topics.get(ros);
   if (!t) {
-    t = new ROSLIB.Topic({ ros, name: CMD_VEL_TOPIC, messageType: 'geometry_msgs/Twist' });
+    t = new ROSLIB.Topic({ ros, name: CMD_VEL_TOPIC, messageType: 'geometry_msgs/msg/Twist' });
     topics.set(ros, t);
   }
   return t;

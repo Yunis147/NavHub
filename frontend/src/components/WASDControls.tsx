@@ -40,7 +40,7 @@ export function WASDControls({ enabled }: { enabled: boolean }) {
           : 'bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 ring-1 ring-blue-900/50 active:scale-95'}
         ${!enabled ? 'cursor-not-allowed opacity-40' : 'hover:shadow-2xl'}
       `}
-      onClick={() => onMouseDown(label.toLowerCase())}
+      onPointerDown={() => onMouseDown(label.toLowerCase())}
       disabled={!enabled}
       title={keys}
     >

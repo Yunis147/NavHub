@@ -4,6 +4,11 @@ import type { Twist2D } from '../services/cmdVel';
 export type TeleopContextType = {
   setTwist: (t: Twist2D) => void;
   stop: () => void;
+  speed: number;
+  turn: number;
+  setSpeed: (s: number) => void;
+  setTurn: (t: number) => void;
+  adjustSpeed: (delta: number) => void;
 };
 
 const TeleopContext = createContext<TeleopContextType | null>(null);

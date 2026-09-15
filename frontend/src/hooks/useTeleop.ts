@@ -1,17 +1,32 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRos } from '../services/ros';
 import { publishTwist, publishZero, ZERO, type Twist2D } from '../services/cmdVel';
 import { PUBLISH_HZ } from '../config';
 
+
+const MAX_SPEED = 1.5;
+const MIN_SPEED = 0.05;
+
 // Owns the /cmd_vel publish loop and the client half of the deadman (Rule 9).
-// While `canDrive`, publishes the current target at PUBLISH_HZ. The instant driving
-// should stop — control lost, disconnect, tab hidden/blurred, unmount — it publishes
-// an explicit zero (when still connected) and stops the loop. The robot-side rclpy
-// watchdog is the backstop for the cases where we can't send anything (crash/wifi).
 export function useTeleop(canDrive: boolean) {
   const { ros, status } = useRos();
   const target = useRef<Twist2D>({ ...ZERO });
   const live = status === 'connected' && canDrive;
+  
+  const [speed, setSpeedState] = useState(0.4);
+  const [turn, setTurnState] = useState(0.8);
+
+  const setSpeed = useCallback((s: number) => {
+    setSpeedState(Math.min(MAX_SPEED, Math.max(MIN_SPEED, s)));
+  }, []);
+  const setTurn = useCallback((t: number) => {
+    setTurnState(Math.min(MAX_SPEED * 2.5, Math.max(MIN_SPEED * 2.5, t)));
+  }, []);
+
+  const adjustSpeed = useCallback((delta: number) => {
+    setSpeedState(s => parseFloat(Math.min(MAX_SPEED, Math.max(MIN_SPEED, s + delta)).toFixed(2)));
+    setTurnState(t => parseFloat(Math.min(MAX_SPEED * 2.5, Math.max(MIN_SPEED * 2.5, t + (delta * 2.5))).toFixed(2)));
+  }, []);
 
   const zeroNow = useCallback(() => {
     target.current = { ...ZERO };
@@ -49,5 +64,5 @@ export function useTeleop(canDrive: boolean) {
     if (ros && status === 'connected') publishTwist(ros, target.current);
   }, [ros, status]);
 
-  return { live, setTranslate, setTwist, stop: zeroNow };
+  return { live, setTranslate, setTwist, stop: zeroNow, speed, turn, setSpeed, setTurn, adjustSpeed };
 }

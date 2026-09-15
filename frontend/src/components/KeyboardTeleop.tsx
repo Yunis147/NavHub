@@ -1,62 +1,64 @@
-import { useEffect, useRef } from 'react';
-import { MAX_ANGULAR, MAX_LINEAR } from '../config';
+import { useEffect } from 'react';
 import type { Twist2D } from '../services/cmdVel';
 
-const KEYS = ['w', 'a', 's', 'd', 'q', 'e'] as const;
-type Key = (typeof KEYS)[number];
-const isKey = (k: string): k is Key => (KEYS as readonly string[]).includes(k);
+const MOVE_BINDINGS: Record<string, [number, number, number]> = {
+  'w': [1, 0, 0],   // forward
+  's': [-1, 0, 0],  // backward
+  'a': [0, 1, 0],   // strafe left
+  'd': [0, -1, 0],  // strafe right
+  'q': [0, 0, 1],   // rotate left (ccw)
+  'e': [0, 0, -1],  // rotate right (cw)
+};
 
-// WASD = translate (w/s = vx, a/d = vy), Q/E = rotate (wz). Headless: publishes through
-// the shared teleop target via onTwist. Releasing all keys sends zero.
 export function KeyboardTeleop({
   enabled,
   onTwist,
+  onStop,
+  speed,
+  turn,
+  onSpeedAdjust
 }: {
   enabled: boolean;
   onTwist: (t: Twist2D) => void;
+  onStop: () => void;
+  speed: number;
+  turn: number;
+  onSpeedAdjust: (delta: number) => void;
 }) {
-  const pressed = useRef<Set<Key>>(new Set());
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
-
   useEffect(() => {
-    const compute = () => {
-      const p = pressed.current;
-      onTwist({
-        vx: (p.has('w') ? MAX_LINEAR : 0) - (p.has('s') ? MAX_LINEAR : 0),
-        vy: (p.has('a') ? MAX_LINEAR : 0) - (p.has('d') ? MAX_LINEAR : 0),
-        wz: (p.has('q') ? MAX_ANGULAR : 0) - (p.has('e') ? MAX_ANGULAR : 0),
-      });
-    };
     const down = (e: KeyboardEvent) => {
+      // If we're typing in an input, don't teleop
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
       const k = e.key.toLowerCase();
-      if (!isKey(k) || !enabledRef.current) return;
-      e.preventDefault();
-      if (!pressed.current.has(k)) {
-        pressed.current.add(k);
-        compute();
+      if (!enabled) return;
+
+      if (k === 'x') {
+        e.preventDefault();
+        onStop();
+      } else if (k === '+' || k === '=') {
+        e.preventDefault();
+        onSpeedAdjust(0.1);
+      } else if (k === '-') {
+        e.preventDefault();
+        onSpeedAdjust(-0.1);
+      } else if (MOVE_BINDINGS[k]) {
+        e.preventDefault();
+        const [x, y, w] = MOVE_BINDINGS[k];
+        onTwist({
+          vx: x * speed,
+          vy: y * speed,
+          wz: w * turn,
+        });
       }
     };
-    const up = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (!isKey(k)) return;
-      if (pressed.current.delete(k)) compute();
-    };
-    const clear = () => {
-      if (pressed.current.size) {
-        pressed.current.clear();
-        onTwist({ vx: 0, vy: 0, wz: 0 });
-      }
-    };
+    
+    // We remove the up() listener because it should be sticky (move until stopped)!
     window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', clear);
     return () => {
       window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', clear);
     };
-  }, [onTwist]);
+  }, [enabled, onTwist, onStop, speed, turn, onSpeedAdjust]);
 
   return null;
 }

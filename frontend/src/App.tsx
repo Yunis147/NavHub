@@ -23,7 +23,7 @@ export default function App() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         {/* Global keyboard handler for teleop (works on both pages) */}
-        <KeyboardTeleop enabled={canDrive} onTwist={teleop.setTwist} />
+        <KeyboardTeleop enabled={canDrive} onTwist={teleop.setTwist} onStop={teleop.stop} speed={teleop.speed} turn={teleop.turn} onSpeedAdjust={teleop.adjustSpeed} />
         <Routes>
           <Route path="/teleop" element={<TeleopPage />} />
           <Route path="/mapping" element={<MappingPage />} />

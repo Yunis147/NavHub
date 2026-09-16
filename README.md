@@ -1,102 +1,51 @@
 # NavHub 🧭
 
-NavHub is a powerful, web-based mission control interface for ROS 2 robots, built with React, Node.js/Express, and ROS 2 Jazzy. It gives you a sleek, mobile-friendly interface to teleoperate your robot, run live SLAM mapping, edit map files dynamically through the browser, and dispatch autonomous navigation waypoints—all over your local network.
+NavHub is a powerful, web-based mission control interface for ROS 2 robots, built with React, Node.js, and ROS 2 Jazzy. It gives you a sleek, mobile-friendly interface completely over your local network to teleoperate your robot, run live SLAM mapping, edit map files, record waypoint locations, and dispatch autonomous navigation missions. 
 
-## Features
-- **Phase 1: Teleoperation:** Low-latency WASD controls and Emergency Stop functionality with connection health monitoring.
-- **Phase 2: SLAM Mapping:** Launch and supervise `slam_toolbox` right from your browser, visualizing real-time map generation and robot positioning.
-- **Phase 3: Map Persistence & Editing:** Save maps seamlessly and edit them directly in the browser (using Konva.js) to clean up LiDAR artifacts or define logical boundaries without breaking SLAM configs.
-- **Phase 4: Navigation:** Dispatch your robot using `nav2` via Action Clients by simply clicking on the map.
-- **Phase 5: Waypoint Database:** Save exact room geometries to a MongoDB database to recall precise target poses instantly.
-- **Phase 6: Headless Deployment:** Configured via `systemd` to boot effortlessly right when you turn on your Raspberry Pi.
+## 🚀 How to Launch the Application
 
----
+Make sure MongoDB is running on your machine. Then, simply run the startup script which brings up the webserver and the ROS bridge for you:
 
-## Prerequisites
-- **Node.js**: v18+ 
-- **ROS 2**: Jazzy (or compatible distributions with `slam_toolbox`, `nav2`, and `rosbridge_suite` installed).
-- **MongoDB**: A running `mongod` database instance (usually on standard `localhost:27017`).
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/Yunis147/NavHub.git
+# 1. Start the NavHub interface
 cd NavHub
+./scripts/start_navhub.sh
 ```
 
-### 2. Install Dependencies
-
-You will need to install Node/NPM dependencies for both the `frontend` and the `backend`.
-
+You will also need to start the odometry for your robot in a separate terminal:
 ```bash
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Build the frontend (required for the backend to serve it)
-npm run build
-
-# Install backend dependencies
-cd ../backend
-npm install
-cd ..
+# 2. Run the odom script (run your specific odom file)
+# Example:
+python3 path/to/your/odom_file.py
 ```
+
+Once running, open a web browser on any device connected to the same Wi-Fi and go to:
+`http://<YOUR_ROBOTS_IP_ADDRESS>:5000`
 
 ---
 
-## 🏃 Running the Application (Manual Method)
+## 🗺️ How to Use the Interface
 
-To run the application manually during development or testing, you'll need **two terminals** (assuming your core ROS 2 environment/LiDAR nodes are already active).
+The interface is divided into several sections on the left-hand navigation bar, designed to follow the lifecycle of setting up a robot:
 
-### Terminal 1: Run the Backend & UI Server
-The NavHub Express server handles API requests, database connectivity, spawns internal ROS processes (like Nav2 or mapping), and serves your built React UI.
-
-```bash
-cd NavHub/backend
-# Optional: Ensure ROS is sourced if you are running this natively on the robot!
-# source /opt/ros/jazzy/setup.bash
-npm start
-```
-*The server will boot on `http://0.0.0.0:5000`.*
-
-### Terminal 2: Run ROS Bridge
-The web interface needs to communicate directly with ROS via WebSockets.
-
-```bash
-source /opt/ros/jazzy/setup.bash
-# If you have a custom robot workspace, source it here as well
-# source ~/robot_ws/install/setup.bash 
-
-# Start the websocket broker on port 9090
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=9090
-```
-
-*Note: You can access the UI by going to `http://<YOUR_ROBOTS_IP_ADDRESS>:5000` from any laptop or mobile device on the same WiFi network!*
+* **Teleoperation**: The simplest page. Use `W`/`A`/`S`/`D` keys to manually drive the robot around, control its speed, or hit the Emergency Stop.
+* **Mapping**: Start `slam_toolbox` to begin mapping your environment. Drive the robot around and watch the map appear in real-time. When finished, name the map and save it!
+* **Maps**: View the maps you've saved. You can delete outdated maps, or use the **Map Editor** to clean up the map (erase LiDAR noise, draw solid borders to block paths).
+* **Points**: Load a saved map in "recording mode." Drive the robot manually using your keyboard to reach specific spots in the room, and use the "Record Here" button to permanently save those target coordinates.
+* **Navigation**: Load a map to run `nav2` autonomous driving! Teleop is intentionally disabled here to prevent interference. You can set the robot's initial pose, click on the map to send a raw goal, or use your saved Points to automatically dispatch the robot to those locations.
 
 ---
 
-## 🤖 Automatic Robot Deployment (Systemd Auto-Start)
-
-If you are running this on a real robot (like a Raspberry Pi), we've packaged a native startup script that launches both the backend and `rosbridge_server` automatically without needing to open multiple terminals!
-
-To install the service so NavHub starts reliably as soon as the robot boots up:
+## 🤖 Optional: Automatic Boot Service
+If you want NavHub to start automatically every time you turn on your Raspberry Pi (without opening terminals), you can install the provided systemd service:
 
 ```bash
-# Verify the paths and usernames in the service file match your robot:
+# Verify the paths in the service file match your robot:
 cat scripts/navhub.service
 
-# Copy the service to systemd
+# Copy the service and enable it to start on boot
 sudo cp scripts/navhub.service /etc/systemd/system/
-
-# Reload and enable
 sudo systemctl daemon-reload
 sudo systemctl enable navhub.service
 sudo systemctl start navhub.service
 ```
-
----
-
-*Built for advanced agentic robotics. Let's get moving!* 🏁

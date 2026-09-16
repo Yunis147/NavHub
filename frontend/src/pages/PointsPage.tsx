@@ -5,7 +5,7 @@ import { useServerState } from '../hooks/useServerState';
 import { useTeleopContext } from '../contexts/TeleopContext';
 import { useSlamMap } from '../hooks/useSlamMap';
 import { startNavigation, stopNavigation, listMaps, type MapInfo, listWaypoints, saveWaypoint, deleteWaypoint, type WaypointInfo } from '../services/api';
-import { publishInitialPose, sendNavGoal } from '../services/nav';
+import { publishInitialPose,  } from '../services/nav';
 import type { Pose2D } from '../lib/tf2d';
 import { ControlBanner } from '../components/ControlBanner';
 import { EStopButton } from '../components/EStopButton';
@@ -13,10 +13,11 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 // We will build a NavViewer component shortly
 import { NavViewer } from '../components/NavViewer';
 
+import { KeyboardTeleop } from '../components/KeyboardTeleop';
 
-// Navigation UI
-export default function NavigationPage() {
-  const { ros } = useRos();
+// Points UI
+export default function PointsPage() {
+  const { ros, status } = useRos();
   const server = useServerState();
   const { hasControl, token, take, give, error } = useControlContext();
 
@@ -34,7 +35,7 @@ export default function NavigationPage() {
 
   const navigating = server.mode === 'navigating';
   const teleop = useTeleopContext();
-  
+  const canDrive = hasControl && server.teleopAllowed && status === 'connected';
 
   // Load maps on mount
   useEffect(() => {
@@ -79,9 +80,7 @@ export default function NavigationPage() {
     }
   };
 
-  const handleDispatchWaypoint = (wp: WaypointInfo) => {
-    handleSetGoalPose(wp);
-  };
+  
 
   const onEStop = useCallback(() => {
     // Rule 6: E-Stop must cancel goal AND zero velocity AND kill Nav2 process tree.
@@ -134,26 +133,18 @@ export default function NavigationPage() {
     }
   }, [ros, navigating]);
 
-  const handleSetGoalPose = useCallback((pose: Pose2D) => {
-    if (ros && navigating) {
-      // Cancel existing if any
-      if (cancelGoalRef.current) cancelGoalRef.current();
 
-      const cancel = sendNavGoal(ros, pose, (status) => {
-        setNavGoalStatus(status);
-        if (['Succeeded', 'Aborted', 'Canceled'].includes(status)) {
-          // keep track
-        }
-      });
-      cancelGoalRef.current = cancel;
-      setNavGoalStatus('Sending...');
-      setInteractMode('view');
-    }
-  }, [ros, navigating]);
 
   return (
     <div className="flex h-[calc(100vh-57px)] bg-slate-950">
-      
+      <KeyboardTeleop
+        enabled={canDrive}
+        onTwist={teleop.setTwist}
+        onStop={teleop.stop}
+        speed={teleop.speed}
+        turn={teleop.turn}
+        onSpeedAdjust={teleop.adjustSpeed}
+      />
       {/* Left sidebar - Controls */}
       <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-900">
         <div className="space-y-4 p-4">
@@ -176,7 +167,7 @@ export default function NavigationPage() {
           <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden">
             <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Autonomous Navigation
+                Map Active (For Points)
               </div>
             </div>
             <div className="p-4 space-y-4">
@@ -218,7 +209,7 @@ export default function NavigationPage() {
                   disabled={busy}
                   className="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-md hover:bg-slate-600 disabled:opacity-50 transition-colors"
                 >
-                  Stop Navigation
+                  Stop Map Mode
                 </button>
               ) : (
                 <button
@@ -227,7 +218,7 @@ export default function NavigationPage() {
                   disabled={!hasControl || server.mode !== 'idle' || busy || !selectedMap}
                   className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 transition-colors"
                 >
-                  Start Nav2
+                  Start Map Mode
                 </button>
               )}
               {navError && <div className="text-xs text-red-400">{navError}</div>}
@@ -255,12 +246,7 @@ export default function NavigationPage() {
                 >
                   📍 Set Initial Pose
                 </button>
-                <button
-                  onClick={() => setInteractMode('goal_pose')}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'goal_pose' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
-                >
-                  🎯 Send Nav Goal
-                </button>
+                
                 {navGoalStatus && (
                   <div className="mt-2 text-xs font-medium text-blue-400 bg-blue-900/20 px-3 py-2 rounded shadow-inner">
                     🚀 Status: {navGoalStatus}
@@ -277,7 +263,15 @@ export default function NavigationPage() {
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
                   🚩 Waypoints
                 </div>
-                
+                {!recordingWaypoint && (
+                   <button
+                     onClick={() => setRecordingWaypoint(true)}
+                     disabled={!robotPose}
+                     className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded shadow disabled:opacity-50 transition-colors"
+                   >
+                     + Record Here
+                   </button>
+                )}
               </div>
               <div className="p-4 flex flex-col gap-3 overflow-hidden flex-1">
                 {recordingWaypoint && (
@@ -312,12 +306,7 @@ export default function NavigationPage() {
                         </div>
                         <div className="flex items-center justify-between">
                            <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full shadow-inner border border-slate-700">[{wp.x.toFixed(2)}, {wp.y.toFixed(2)}, {(wp.yaw * 180 / Math.PI).toFixed(0)}°]</span>
-                           <button
-                             onClick={() => handleDispatchWaypoint(wp)}
-                             className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-md shadow-lg shadow-blue-900/50 flex flex-row items-center gap-1 transition-all active:scale-95"
-                           >
-                              <span>Go</span> <span>→</span>
-                           </button>
+                           
                         </div>
                       </div>
                     ))
@@ -340,7 +329,7 @@ export default function NavigationPage() {
            robotPose={robotPose}
            interactMode={interactMode}
            onSetInitialPose={handleSetInitialPose}
-           onSetGoalPose={handleSetGoalPose}
+           
          />
       </div>
     </div>

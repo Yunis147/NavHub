@@ -29,8 +29,18 @@ export function KeyboardTeleop({
     const handler = (e: KeyboardEvent) => {
       // Very basic tag check to avoid typed inputs
       if (e.repeat) return; // Prevent spamming if user holds key
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return;
+      const el = e.target as HTMLElement;
+      const tag = el?.tagName?.toLowerCase();
+      // Ignore keys if the user is typing into any text input or editable element
+      if (
+        tag === 'input' || 
+        tag === 'textarea' || 
+        tag === 'select' || 
+        tag === 'button' ||
+        el?.isContentEditable
+      ) {
+        return;
+      }
       
       const k = e.key.toLowerCase();
 

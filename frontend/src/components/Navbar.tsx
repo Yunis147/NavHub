@@ -42,6 +42,18 @@ export function Navbar() {
             Mapping
           </NavLink>
           <NavLink
+            to="/points"
+            className={({ isActive }) =>
+              `rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100'
+              }`
+            }
+          >
+            Points
+          </NavLink>
+          <NavLink
             to="/navigation"
             className={({ isActive }) =>
               `rounded-lg px-4 py-2 text-sm font-medium transition-all ${

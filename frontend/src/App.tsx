@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import TeleopPage from './pages/TeleopPage';
 import MappingPage from './pages/MappingPage';
 import NavigationPage from './pages/NavigationPage';
+import PointsPage from './pages/PointsPage';
 import MapsPage from './pages/MapsPage';
 import { useRos } from './services/ros';
 import { useServerState } from './hooks/useServerState';
@@ -25,6 +26,7 @@ function NavHub() {
           <Route path="/teleop" element={<TeleopPage />} />
           <Route path="/mapping" element={<MappingPage />} />
           <Route path="/navigation" element={<NavigationPage />} />
+          <Route path="/points" element={<PointsPage />} />
           <Route path="/maps" element={<MapsPage />} />
           <Route path="/" element={<Navigate to="/teleop" replace />} />
         </Routes>

@@ -62,10 +62,11 @@ export function KeyboardTeleop({
       }
     };
     
-    // Attach to document body to ensure catching
-    document.addEventListener('keydown', handler);
+    // Capture at window level so a focused card, SVG/canvas, or nested control
+    // cannot prevent browser teleop shortcuts from reaching this handler.
+    window.addEventListener('keydown', handler, { capture: true });
     return () => {
-      document.removeEventListener('keydown', handler);
+      window.removeEventListener('keydown', handler, { capture: true });
     };
   }, [enabled, onTwist, onStop, speed, turn, onSpeedAdjust]);
 

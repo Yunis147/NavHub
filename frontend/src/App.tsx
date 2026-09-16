@@ -4,17 +4,16 @@ import TeleopPage from './pages/TeleopPage';
 import MappingPage from './pages/MappingPage';
 import NavigationPage from './pages/NavigationPage';
 import MapsPage from './pages/MapsPage';
-import { KeyboardTeleop } from './components/KeyboardTeleop';
 import { useRos } from './services/ros';
-import { useControl } from './hooks/useControl';
 import { useServerState } from './hooks/useServerState';
 import { useTeleop } from './hooks/useTeleop';
 import { TeleopProvider } from './contexts/TeleopContext';
+import { ControlProvider, useControlContext } from './contexts/ControlContext';
 
-export default function App() {
+function NavHub() {
   const { status } = useRos();
   const server = useServerState();
-  const { hasControl } = useControl();
+  const { hasControl } = useControlContext();
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
   const teleop = useTeleop(canDrive);
 
@@ -22,8 +21,6 @@ export default function App() {
     <TeleopProvider value={teleop}>
       <div className="flex min-h-screen flex-col">
         <Navbar />
-        {/* Global keyboard handler for teleop (works on both pages) */}
-        <KeyboardTeleop enabled={canDrive} onTwist={teleop.setTwist} onStop={teleop.stop} speed={teleop.speed} turn={teleop.turn} onSpeedAdjust={teleop.adjustSpeed} />
         <Routes>
           <Route path="/teleop" element={<TeleopPage />} />
           <Route path="/mapping" element={<MappingPage />} />
@@ -33,5 +30,13 @@ export default function App() {
         </Routes>
       </div>
     </TeleopProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ControlProvider>
+      <NavHub />
+    </ControlProvider>
   );
 }

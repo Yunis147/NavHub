@@ -24,7 +24,10 @@ ROSBRIDGE_PID=$!
 
 cleanup() {
     echo "[start_navhub] Terminating..."
-    kill -TERM $ROSBRIDGE_PID 2>/dev/null
+    kill -TERM "$ROSBRIDGE_PID" 2>/dev/null || true
+    kill -TERM "$NODE_PID" 2>/dev/null || true
+    wait "$ROSBRIDGE_PID" 2>/dev/null || true
+    wait "$NODE_PID" 2>/dev/null || true
     exit 0
 }
 trap cleanup SIGINT SIGTERM
@@ -39,5 +42,5 @@ node src/server.js &
 NODE_PID=$!
 
 # Wait for any child process to exit
-wait -n
+wait -n "$ROSBRIDGE_PID" "$NODE_PID" || true
 cleanup

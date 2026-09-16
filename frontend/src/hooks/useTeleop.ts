@@ -10,6 +10,7 @@ const MIN_SPEED = 0.05;
 export function useTeleop(canDrive: boolean) {
   const { ros, status } = useRos();
   const target = useRef<Twist2D>({ ...ZERO });
+  const keepaliveId = useRef<number | null>(null);
   const live = status === 'connected' && canDrive;
   
   const [speed, setSpeedState] = useState(0.4);
@@ -42,34 +43,35 @@ export function useTeleop(canDrive: boolean) {
     });
   }, []);
 
+  const stopKeepalive = useCallback(() => {
+    if (keepaliveId.current !== null) {
+      window.clearInterval(keepaliveId.current);
+      keepaliveId.current = null;
+    }
+  }, []);
+
   const zeroNow = useCallback(() => {
+    stopKeepalive();
     target.current = { ...ZERO };
     if (ros && status === 'connected') publishZero(ros);
-  }, [ros, status]);
+  }, [ros, status, stopKeepalive]);
 
-  // A latched command must be refreshed faster than the independent ROS watchdog
-  // timeout. Stopping this loop on any loss of browser authority lets that watchdog
-  // safely stop the robot even if this tab crashes before it can publish zero.
+  // A command is only allowed to remain latched while this browser has control.
+  // Loss of that authority or ROS connection cancels any active command stream.
   useEffect(() => {
     if (!live || !ros) {
-      if (ros && status === 'connected') publishZero(ros);
+      zeroNow();
       return;
     }
 
-    const interval = window.setInterval(() => {
-      if (target.current.vx !== 0 || target.current.vy !== 0 || target.current.wz !== 0) {
-        publishTwist(ros, target.current);
-      }
-    }, 1000 / TELEOP_KEEPALIVE_HZ);
-
-    return () => window.clearInterval(interval);
-  }, [live, ros, status]);
+    return stopKeepalive;
+  }, [live, ros, stopKeepalive, zeroNow]);
 
   useEffect(() => {
     return () => {
-      if (ros && status === 'connected') publishZero(ros);
+      zeroNow();
     };
-  }, [ros, status]);
+  }, [zeroNow]);
 
   useEffect(() => {
     const onHide = () => {
@@ -89,8 +91,19 @@ export function useTeleop(canDrive: boolean) {
   
   const setTwist = useCallback((t: Twist2D) => {
     target.current = { ...t };
-    if (ros && status === 'connected') publishTwist(ros, target.current);
-  }, [ros, status]);
+    if (!ros || status !== 'connected') return;
+
+    publishTwist(ros, target.current);
+    stopKeepalive();
+
+    if (t.vx !== 0 || t.vy !== 0 || t.wz !== 0) {
+      // Start the keepalive in the same path that just reached the robot. This
+      // avoids depending on a later state render to make latched motion work.
+      keepaliveId.current = window.setInterval(() => {
+        publishTwist(ros, target.current);
+      }, 1000 / TELEOP_KEEPALIVE_HZ);
+    }
+  }, [ros, status, stopKeepalive]);
 
   return { live, setTranslate, setTwist, stop: zeroNow, speed, turn, setSpeed, setTurn, adjustSpeed };
 }

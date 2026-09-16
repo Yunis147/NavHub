@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useRos } from '../services/ros';
-import { useControl } from '../hooks/useControl';
+import { useControlContext } from '../contexts/ControlContext';
 import { useServerState } from '../hooks/useServerState';
 import { useTeleopContext } from '../contexts/TeleopContext';
 import { ControlBanner } from '../components/ControlBanner';
@@ -8,11 +8,12 @@ import { WASDControls } from '../components/WASDControls';
 import { TeleopInstructions } from '../components/TeleopInstructions';
 import { EStopButton } from '../components/EStopButton';
 import { ConnectionStatus } from '../components/ConnectionStatus';
+import { KeyboardTeleop } from '../components/KeyboardTeleop';
 
 export default function TeleopPage() {
   const { status } = useRos();
   const server = useServerState();
-  const { hasControl, take, give, error } = useControl();
+  const { hasControl, take, give, error } = useControlContext();
 
   const canDrive = hasControl && server.teleopAllowed && status === 'connected';
   const teleop = useTeleopContext();
@@ -24,6 +25,14 @@ export default function TeleopPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-57px)] bg-slate-950">
+      <KeyboardTeleop
+        enabled={canDrive}
+        onTwist={teleop.setTwist}
+        onStop={teleop.stop}
+        speed={teleop.speed}
+        turn={teleop.turn}
+        onSpeedAdjust={teleop.adjustSpeed}
+      />
       <div className="mx-auto flex w-full max-w-6xl gap-8 p-6 lg:flex-row flex-col items-start">
 
         {/* Left Column: Context, Connection, and Instructions */}

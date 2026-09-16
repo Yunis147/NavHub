@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useRos } from '../services/ros';
-import { useControl } from '../hooks/useControl';
+import { useControlContext } from '../contexts/ControlContext';
 import { useServerState } from '../hooks/useServerState';
 import { useTeleopContext } from '../contexts/TeleopContext';
 import { useSlamMap } from '../hooks/useSlamMap';
@@ -17,7 +17,7 @@ import { NavViewer } from '../components/NavViewer';
 export default function NavigationPage() {
   const { ros } = useRos();
   const server = useServerState();
-  const { hasControl, token, take, give, error } = useControl();
+  const { hasControl, token, take, give, error } = useControlContext();
   
   // We reuse useSlamMap for the active grid and robot TF
   const { grid, robotPose } = useSlamMap(ros);

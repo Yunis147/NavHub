@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useRos } from '../services/ros';
-import { useControl } from '../hooks/useControl';
+import { useControlContext } from '../contexts/ControlContext';
 import { useServerState } from '../hooks/useServerState';
 import { useTeleopContext } from '../contexts/TeleopContext';
 import { useSlamMap } from '../hooks/useSlamMap';
@@ -13,7 +13,7 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 export default function MappingPage() {
   const { ros } = useRos();
   const server = useServerState();
-  const { hasControl, token, take, give, error } = useControl();
+  const { hasControl, token, take, give, error } = useControlContext();
   const { grid, robotPose } = useSlamMap(ros);
 
   const teleop = useTeleopContext();

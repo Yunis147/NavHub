@@ -75,3 +75,18 @@ Instead of having the backend Node.js server subscribe to `/amcl_pose` mid-reque
 - **Context:** The browser published a nonzero `/cmd_vel` command only once. The required native watchdog correctly treats command silence as a disconnect and publishes zero after 0.5 seconds, so a requested latched move stopped almost immediately.
 - **Choice Made:** Keep the selected WASD/QE command in the frontend and republish it at a fixed cadence while the page is connected and holds control. Stop publishing and immediately send a zero command for X/E-Stop, focus or visibility loss, control loss, route teardown, or rosbridge disconnection.
 - **Reasoning & Trade-offs:** Repeated publishing preserves the terminal teleop's one-key-command behavior while satisfying Rule 9: a crashed or disconnected browser goes silent and the independent ROS watchdog halts the robot. The keepalive is intentionally owned by the browser rather than weakening or removing the robot-side safety watchdog.
+
+### [2026-09-16] Application-Wide Control Token
+- **Context:** `App` and each routed page independently invoked `useControl`. The Teleop page therefore held a different token than the application-level keyboard handler and command keepalive. On-screen buttons could send one command, but the global teleop logic remained disabled and keyboard input was ignored.
+- **Choice Made:** Provide one `useControl` instance at the application root through `ControlContext`; all pages, global keyboard teleop, and the keepalive consume that same token.
+- **Reasoning & Trade-offs:** A control token represents a browser session, not an individual route. Keeping it at the application root makes route changes safe and ensures every control surface observes the same authorization state, preserving Rule 10's single-controller model.
+
+### [2026-09-16] Startup Script Child Cleanup
+- **Context:** Stopping `start_navhub.sh` terminated rosbridge but left the background Node backend running. Subsequent manual restarts could then run an old backend process or fail to bind port 5000.
+- **Choice Made:** The shutdown handler now terminates and waits for both rosbridge and Node; `wait -n` explicitly monitors both children.
+- **Reasoning & Trade-offs:** A manual launch script must have the same clean process ownership expected by Rule 11. This prevents stale backend and watchdog processes from confusing deploy and teleop testing.
+
+### [2026-09-16] Synchronous Teleop Keepalive and Route-Local Keyboard Handler
+- **Context:** A topic-rate measurement confirmed that a button press emitted only one `/cmd_vel` message. The keepalive had been attached through a separate render-time effect, while keyboard input was mounted outside the teleop page's control surface.
+- **Choice Made:** Starting a nonzero command now starts its keepalive in the same callback that successfully publishes the initial message. The keyboard listener is mounted with the Teleop page, shares its exact enablement state, and listens during the window capture phase.
+- **Reasoning & Trade-offs:** The control path is now direct: button or key → `setTwist` → immediate publish plus 10 Hz keepalive. The watchdog and explicit stop paths remain intact; focus loss, connection/control loss, X, and E-Stop cancel the timer and publish zero.

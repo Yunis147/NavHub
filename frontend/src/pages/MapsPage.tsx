@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listMaps, type MapInfo } from '../services/api';
+import { listMaps, deleteMap, type MapInfo } from '../services/api';
 import { MapEditor } from '../components/MapEditor';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
@@ -9,21 +9,34 @@ export default function MapsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingMap, setEditingMap] = useState<string | null>(null);
 
+  const loadMaps = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listMaps();
+      setMaps(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load maps');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadMaps = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await listMaps();
-        setMaps(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load maps');
-      } finally {
-        setLoading(false);
-      }
-    };
     loadMaps();
   }, []);
+
+  const handleDelete = async (name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the map '${name}'? This will also delete all associated waypoints.`)) {
+      return;
+    }
+    try {
+      await deleteMap(name);
+      await loadMaps();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete map');
+    }
+  };
 
   return (
     <div className="min-h-[calc(100vh-57px)] bg-slate-950">
@@ -104,12 +117,20 @@ export default function MapsPage() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setEditingMap(map.name)}
-                  className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-500 transition-colors"
-                >
-                  Edit Map
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingMap(map.name)}
+                    className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-500 transition-colors"
+                  >
+                    Edit Map
+                  </button>
+                  <button
+                    onClick={() => handleDelete(map.name)}
+                    className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-300 border border-slate-600 shadow-md hover:bg-red-900 hover:text-white hover:border-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

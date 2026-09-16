@@ -177,6 +177,38 @@ router.post('/maps/save', async (req, res) => {
 
 // --- Map Image Binary endpoints ---
 
+router.delete('/maps/:name', async (req, res) => {
+  try {
+    const { Map } = await import('../models/Map.js');
+    const { Waypoint } = await import('../models/Waypoint.js');
+
+    const map = await Map.findOne({ name: req.params.name });
+    if (!map) return res.status(404).json({ error: 'Map not found in database' });
+
+    // Ensure we are not currently mapping/navigating with it
+    const sState = control.publicState();
+    if (sState.mode !== 'idle') {
+      return res.status(409).json({ error: 'Cannot delete map while system is not idle' });
+    }
+
+    // Clean up associated files on disk (.pgm and .yaml)
+    if (fs.existsSync(map.imagePath)) fs.unlinkSync(map.imagePath);
+    if (fs.existsSync(map.yamlPath)) fs.unlinkSync(map.yamlPath);
+
+    // Delete associated waypoints in DB
+    await Waypoint.deleteMany({ mapId: map._id });
+
+    // Delete map from DB
+    await Map.deleteOne({ _id: map._id });
+
+    console.log(`[api/maps] deleted map '${req.params.name}' and its files.`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[api/maps] delete error:`, err);
+    res.status(500).json({ error: 'Failed to delete map' });
+  }
+});
+
 router.get('/maps/:name/image', (req, res) => {
   const pgmPath = path.join(mapsDir, `${req.params.name}.pgm`);
   if (!fs.existsSync(pgmPath)) {

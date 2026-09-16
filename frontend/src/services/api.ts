@@ -88,6 +88,14 @@ export async function listMaps(): Promise<MapInfo[]> {
   return (await r.json()) as MapInfo[];
 }
 
+export async function deleteMap(name: string): Promise<void> {
+  const r = await fetch(`${API_URL}/api/maps/${name}`, { method: 'DELETE' });
+  if (!r.ok) {
+     const body = (await r.json().catch(() => ({}))) as { error?: string };
+     throw new Error(body.error || `delete map ${r.status}`);
+  }
+}
+
 export async function getMapImageBuffer(name: string): Promise<ArrayBuffer> {
   const r = await fetch(`${API_URL}/api/maps/${name}/image`);
   if (!r.ok) throw new Error(`get map image ${r.status}`);

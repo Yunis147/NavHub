@@ -36,7 +36,7 @@ export function publicState() {
     mode: state.mode,
     controlled: state.controller != null,
     since: state.controller?.since ?? null,
-    teleopAllowed: state.mode !== 'navigating',
+    teleopAllowed: true, // User requested teleop active in Navigation to record waypoints manually
   };
 }
 

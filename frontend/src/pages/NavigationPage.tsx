@@ -327,7 +327,7 @@ export default function NavigationPage() {
                           </button>
                         </div>
                         <div className="flex items-center justify-between">
-                           <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full shadow-inner border border-slate-700">[{wp.x.toFixed(2)}, {wp.y.toFixed(2)}]</span>
+                           <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full shadow-inner border border-slate-700">[{wp.x.toFixed(2)}, {wp.y.toFixed(2)}, {(wp.yaw * 180 / Math.PI).toFixed(0)}°]</span>
                            <button
                              onClick={() => handleDispatchWaypoint(wp)}
                              className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-md shadow-lg shadow-blue-900/50 flex flex-row items-center gap-1 transition-all active:scale-95"

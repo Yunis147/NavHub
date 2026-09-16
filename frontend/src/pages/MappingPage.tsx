@@ -10,13 +10,16 @@ import { MapViewer } from '../components/MapViewer';
 import { EStopButton } from '../components/EStopButton';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
+import { KeyboardTeleop } from '../components/KeyboardTeleop';
+
 export default function MappingPage() {
-  const { ros } = useRos();
+  const { ros, status } = useRos();
   const server = useServerState();
   const { hasControl, token, take, give, error } = useControlContext();
   const { grid, robotPose } = useSlamMap(ros);
 
   const teleop = useTeleopContext();
+  const canDrive = hasControl && server.teleopAllowed && status === 'connected';
 
   const onEStop = useCallback(() => {
     teleop.stop();
@@ -25,6 +28,14 @@ export default function MappingPage() {
 
   return (
     <div className="flex h-[calc(100vh-57px)] bg-slate-950">
+      <KeyboardTeleop
+        enabled={canDrive}
+        onTwist={teleop.setTwist}
+        onStop={teleop.stop}
+        speed={teleop.speed}
+        turn={teleop.turn}
+        onSpeedAdjust={teleop.adjustSpeed}
+      />
       {/* Left sidebar - Controls */}
       <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-900">
         <div className="space-y-4 p-4">

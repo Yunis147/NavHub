@@ -33,28 +33,66 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   const { width: W, height: H, resolution: res, origin } = grid.info;
   const d = grid.data;
 
+  // Find bounding box of known cells (val >= 0)
+  let minX = W, maxX = 0, minY = H, maxY = 0;
+  let hasKnown = false;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (d[y * W + x] >= 0) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        hasKnown = true;
+      }
+    }
+  }
+
+  // If map is completely unknown, use a small default bounding box around center
+  if (!hasKnown) {
+    minX = Math.floor(W / 2) - 10;
+    maxX = Math.floor(W / 2) + 10;
+    minY = Math.floor(H / 2) - 10;
+    maxY = Math.floor(H / 2) + 10;
+  }
+
+  // Add a small margin (e.g., 20 pixels) to the bounding box
+  const margin = 20;
+  minX = Math.max(0, minX - margin);
+  maxX = Math.min(W - 1, maxX + margin);
+  minY = Math.max(0, minY - margin);
+  maxY = Math.min(H - 1, maxY + margin);
+
+  const cropW = maxX - minX + 1;
+  const cropH = maxY - minY + 1;
+
   // Rasterize the grid at native resolution on an offscreen canvas.
+  // ONLY render the cropped region!
   const off = document.createElement('canvas');
-  off.width = W;
-  off.height = H;
+  off.width = cropW;
+  off.height = cropH;
   const octx = off.getContext('2d');
   if (!octx) return;
-  const img = octx.createImageData(W, H);
-  for (let i = 0; i < W * H; i++) {
-    const v = d[i];
-    const g = v < 0 ? 60 : 255 - Math.round((v / 100) * 255); // unknown darker gray; free white; occ black
-    const o = i * 4;
-    img.data[o] = g;
-    img.data[o + 1] = g;
-    img.data[o + 2] = g;
-    img.data[o + 3] = 255;
+  const img = octx.createImageData(cropW, cropH);
+  for (let cy = 0; cy < cropH; cy++) {
+    for (let cx = 0; cx < cropW; cx++) {
+      const srcX = minX + cx;
+      const srcY = minY + cy;
+      const v = d[srcY * W + srcX];
+      const g = v < 0 ? 60 : 255 - Math.round((v / 100) * 255);
+      const o = (cy * cropW + cx) * 4;
+      img.data[o] = g;
+      img.data[o + 1] = g;
+      img.data[o + 2] = g;
+      img.data[o + 3] = 255;
+    }
   }
   octx.putImageData(img, 0, 0);
 
-  // Fit the grid into the canvas, preserving aspect ratio.
-  const scale = Math.min(cw / W, ch / H);
-  const dw = W * scale;
-  const dh = H * scale;
+  // Fit the cropped grid into the canvas, preserving aspect ratio.
+  const scale = Math.min(cw / cropW, ch / cropH);
+  const dw = cropW * scale;
+  const dh = cropH * scale;
   const offX = (cw - dw) / 2;
   const offY = (ch - dh) / 2;
 
@@ -66,10 +104,13 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
 
   // Draw robot as an oriented arrow
   if (pose) {
-    const gx = (pose.x - origin.position.x) / res; // world metres -> grid pixels
-    const gy = (pose.y - origin.position.y) / res;
+    const gx = (pose.x - origin.position.x) / res; // world metres -> absolute grid pixels
+    // Translate relative to the cropped bounding box mapping!
+    const croppedGx = gx - minX;
+    const croppedGy = (pose.y - origin.position.y) / res - minY;
+
     const k = 12 / scale; // arrow size ~12 screen px regardless of zoom
-    ctx.translate(gx, gy);
+    ctx.translate(croppedGx, croppedGy);
     ctx.rotate(pose.yaw);
     ctx.beginPath();
     ctx.moveTo(k, 0);

@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import type { Twist2D } from '../services/cmdVel';
 
 const MOVE_BINDINGS: Record<string, [number, number, number]> = {
-  'w': [1, 0, 0],   // forward
-  's': [-1, 0, 0],  // backward
-  'a': [0, 1, 0],   // strafe left
-  'd': [0, -1, 0],  // strafe right
-  'q': [0, 0, 1],   // rotate left (ccw)
-  'e': [0, 0, -1],  // rotate right (cw)
+  'w': [1, 0, 0],
+  's': [-1, 0, 0],
+  'a': [0, 1, 0],
+  'd': [0, -1, 0],
+  'q': [0, 0, 1],
+  'e': [0, 0, -1],
 };
 
 export function KeyboardTeleop({
@@ -26,12 +26,13 @@ export function KeyboardTeleop({
   onSpeedAdjust: (delta: number) => void;
 }) {
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      // If we're typing in an input, don't teleop
+    const handler = (e: KeyboardEvent) => {
+      // Must have control to drive
+      if (!enabled) return;
+      // Skip if explicitly typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       
       const k = e.key.toLowerCase();
-      if (!enabled) return;
 
       if (k === 'x') {
         e.preventDefault();
@@ -53,10 +54,9 @@ export function KeyboardTeleop({
       }
     };
     
-    // We remove the up() listener because it should be sticky (move until stopped)!
-    window.addEventListener('keydown', down);
+    window.addEventListener('keydown', handler);
     return () => {
-      window.removeEventListener('keydown', down);
+      window.removeEventListener('keydown', handler);
     };
   }, [enabled, onTwist, onStop, speed, turn, onSpeedAdjust]);
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRos } from '../services/ros';
 import { publishTwist, publishZero, ZERO, type Twist2D } from '../services/cmdVel';
+import { TELEOP_KEEPALIVE_HZ } from '../config';
 
 
 const MAX_SPEED = 1.5;
@@ -46,12 +47,27 @@ export function useTeleop(canDrive: boolean) {
     if (ros && status === 'connected') publishZero(ros);
   }, [ros, status]);
 
-    // No continuous background loop!
-  // Just like teleop.py, we only publish when the user commands a state change.
-  // The robot keeps moving until an explicit ZERO is published.
+  // A latched command must be refreshed faster than the independent ROS watchdog
+  // timeout. Stopping this loop on any loss of browser authority lets that watchdog
+  // safely stop the robot even if this tab crashes before it can publish zero.
+  useEffect(() => {
+    if (!live || !ros) {
+      if (ros && status === 'connected') publishZero(ros);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      if (target.current.vx !== 0 || target.current.vy !== 0 || target.current.wz !== 0) {
+        publishTwist(ros, target.current);
+      }
+    }, 1000 / TELEOP_KEEPALIVE_HZ);
+
+    return () => window.clearInterval(interval);
+  }, [live, ros, status]);
+
   useEffect(() => {
     return () => {
-      if (status === 'connected' && ros) publishZero(ros);
+      if (ros && status === 'connected') publishZero(ros);
     };
   }, [ros, status]);
 

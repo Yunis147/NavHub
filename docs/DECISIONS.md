@@ -70,3 +70,8 @@ Instead of having the backend Node.js server subscribe to `/amcl_pose` mid-reque
   3. M3 - Constrained `KeyboardTeleop` in `App.tsx` by passing `canDrive = hasControl && server.teleopAllowed && status === 'connected'` to conditionally enable keyboard listeners.
   4. M4 - Moved `<TeleopProvider>` up to `App.tsx` so all components (including `KeyboardTeleop` and `TeleopPage`) have access to it.
 - **Reasoning:** These are quality-of-life and safety improvements matching production expectations. Consolidating the `TeleopProvider` in `App.tsx` unified the control state, seamlessly addressing both M3 and M4.
+
+### [2026-09-16] Latched Web Teleop With Watchdog Keepalive
+- **Context:** The browser published a nonzero `/cmd_vel` command only once. The required native watchdog correctly treats command silence as a disconnect and publishes zero after 0.5 seconds, so a requested latched move stopped almost immediately.
+- **Choice Made:** Keep the selected WASD/QE command in the frontend and republish it at a fixed cadence while the page is connected and holds control. Stop publishing and immediately send a zero command for X/E-Stop, focus or visibility loss, control loss, route teardown, or rosbridge disconnection.
+- **Reasoning & Trade-offs:** Repeated publishing preserves the terminal teleop's one-key-command behavior while satisfying Rule 9: a crashed or disconnected browser goes silent and the independent ROS watchdog halts the robot. The keepalive is intentionally owned by the browser rather than weakening or removing the robot-side safety watchdog.

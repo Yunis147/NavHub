@@ -60,7 +60,7 @@ export default function TeleopPage() {
           {canDrive && (
             <div className="flex items-center justify-center gap-2 rounded-xl border border-green-900/50 bg-green-950/30 py-3 text-sm font-medium text-green-400 shadow-sm">
               <div className="h-2 w-2 rounded-full bg-green-500 status-pulse" />
-              Ready to drive — press and hold controls
+              Ready to drive — press a direction once; X stops
             </div>
           )}
 

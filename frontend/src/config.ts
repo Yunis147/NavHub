@@ -12,6 +12,9 @@ export const CMD_VEL_TOPIC = '/cmd_vel';
 // Teleop tuning. Conservative caps for Phase 1 — these are the physical-speed knobs
 // (Note: leave the constants; a real base needs tuning a minimal model can't see).
 export const PUBLISH_HZ = 30;
+// A latched browser command is republished at this rate so the independent ROS
+// deadman knows the browser is still present. It must stay above its 0.5 s timeout.
+export const TELEOP_KEEPALIVE_HZ = 10;
 export const MAX_LINEAR = 0.25; // m/s
 export const MAX_ANGULAR = 0.8; // rad/s
 

@@ -13,12 +13,14 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 // We will build a NavViewer component shortly
 import { NavViewer } from '../components/NavViewer';
 
-// Navigation UI 
+import { KeyboardTeleop } from '../components/KeyboardTeleop';
+
+// Navigation UI
 export default function NavigationPage() {
-  const { ros } = useRos();
+  const { ros, status } = useRos();
   const server = useServerState();
   const { hasControl, token, take, give, error } = useControlContext();
-  
+
   // We reuse useSlamMap for the active grid and robot TF
   const { grid, robotPose } = useSlamMap(ros);
 
@@ -33,6 +35,7 @@ export default function NavigationPage() {
 
   const navigating = server.mode === 'navigating';
   const teleop = useTeleopContext();
+  const canDrive = hasControl && server.teleopAllowed && status === 'connected';
 
   // Load maps on mount
   useEffect(() => {
@@ -151,6 +154,14 @@ export default function NavigationPage() {
 
   return (
     <div className="flex h-[calc(100vh-57px)] bg-slate-950">
+      <KeyboardTeleop
+        enabled={canDrive}
+        onTwist={teleop.setTwist}
+        onStop={teleop.stop}
+        speed={teleop.speed}
+        turn={teleop.turn}
+        onSpeedAdjust={teleop.adjustSpeed}
+      />
       {/* Left sidebar - Controls */}
       <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-900">
         <div className="space-y-4 p-4">

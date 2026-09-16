@@ -33,12 +33,14 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   const { width: W, height: H, resolution: res, origin } = grid.info;
   const d = grid.data;
 
-  // Find bounding box of known cells (val >= 0)
+  // Find bounding box of obstacles (val === 100).
+  // We crop to walls instead of free-space (0), because LiDAR scans write free-space 12m away
+  // which makes the bounding box massive and causes letterboxing.
   let minX = W, maxX = 0, minY = H, maxY = 0;
   let hasKnown = false;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      if (d[y * W + x] >= 0) {
+      if (d[y * W + x] >= 90) { // Usually 100, but anything >90 is solid obstacle
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -48,16 +50,23 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
     }
   }
 
-  // If map is completely unknown, use a small default bounding box around center
+  // If map has no walls yet, fallback to robot position if available, or center
   if (!hasKnown) {
-    minX = Math.floor(W / 2) - 10;
-    maxX = Math.floor(W / 2) + 10;
-    minY = Math.floor(H / 2) - 10;
-    maxY = Math.floor(H / 2) + 10;
+    if (pose) {
+       const gx = Math.floor((pose.x - origin.position.x) / res);
+       const gy = Math.floor((pose.y - origin.position.y) / res);
+       minX = gx - 40; maxX = gx + 40;
+       minY = gy - 40; maxY = gy + 40;
+    } else {
+       minX = Math.floor(W / 2) - 40;
+       maxX = Math.floor(W / 2) + 40;
+       minY = Math.floor(H / 2) - 40;
+       maxY = Math.floor(H / 2) + 40;
+    }
   }
 
-  // Add a small margin (e.g., 20 pixels) to the bounding box
-  const margin = 20;
+  // Add a margin (e.g., 40 pixels) so walls aren't directly on edge of screen
+  const margin = 40;
   minX = Math.max(0, minX - margin);
   maxX = Math.min(W - 1, maxX + margin);
   minY = Math.max(0, minY - margin);

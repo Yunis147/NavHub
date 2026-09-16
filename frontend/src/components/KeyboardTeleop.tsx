@@ -27,12 +27,20 @@ export function KeyboardTeleop({
 }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Must have control to drive
-      if (!enabled) return;
-      // Skip if explicitly typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Very basic tag check to avoid typed inputs
+      if (e.repeat) return; // Prevent spamming if user holds key
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
       
       const k = e.key.toLowerCase();
+
+      // Don't intercept unless it's one of our keys
+      if (!['w','a','s','d','q','e','x','+','=','-'].includes(k)) return;
+
+      if (!enabled) {
+         console.warn("Keyboard teleop ignored because you don't have control.");
+         return;
+      }
 
       if (k === 'x') {
         e.preventDefault();
@@ -54,9 +62,10 @@ export function KeyboardTeleop({
       }
     };
     
-    window.addEventListener('keydown', handler);
+    // Attach to document body to ensure catching
+    document.addEventListener('keydown', handler);
     return () => {
-      window.removeEventListener('keydown', handler);
+      document.removeEventListener('keydown', handler);
     };
   }, [enabled, onTwist, onStop, speed, turn, onSpeedAdjust]);
 

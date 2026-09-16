@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRos } from '../services/ros';
 import { publishTwist, publishZero, ZERO, type Twist2D } from '../services/cmdVel';
-import { PUBLISH_HZ } from '../config';
+
 
 const MAX_SPEED = 1.5;
 const MIN_SPEED = 0.05;
@@ -46,17 +46,14 @@ export function useTeleop(canDrive: boolean) {
     if (ros && status === 'connected') publishZero(ros);
   }, [ros, status]);
 
-  // High-frequency publish loop to overpower Nav2 collision_monitor if needed
+    // No continuous background loop!
+  // Just like teleop.py, we only publish when the user commands a state change.
+  // The robot keeps moving until an explicit ZERO is published.
   useEffect(() => {
-    if (!ros || !live) return;
-    const id = setInterval(() => {
-       if (ros && status === 'connected') publishTwist(ros, target.current);
-    }, 1000 / PUBLISH_HZ);
     return () => {
-      clearInterval(id);
       if (status === 'connected' && ros) publishZero(ros);
     };
-  }, [ros, live, status]);
+  }, [ros, status]);
 
   useEffect(() => {
     const onHide = () => {

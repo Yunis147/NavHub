@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { ViewerEmptyState } from './WorkspaceUI';
 import type { Pose2D } from '../lib/tf2d';
 import type { OccupancyGrid } from '../hooks/useSlamMap';
 
@@ -14,7 +15,7 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   const ch = canvas.height;
 
   // Dark background
-  ctx.fillStyle = '#0a0f1a';
+  ctx.fillStyle = '#101810';
   ctx.fillRect(0, 0, cw, ch);
 
   if (!grid || grid.info.width === 0 || grid.info.height === 0) {
@@ -129,13 +130,13 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
 
     // Gradient fill for robot arrow
     const grad = ctx.createLinearGradient(-k, 0, k, 0);
-    grad.addColorStop(0, '#3b82f6');
-    grad.addColorStop(1, '#60a5fa');
+    grad.addColorStop(0, '#8ebd60');
+    grad.addColorStop(1, '#b9f582');
     ctx.fillStyle = grad;
     ctx.fill();
 
     // Outline
-    ctx.strokeStyle = '#1e40af';
+    ctx.strokeStyle = '#4c6635';
     ctx.lineWidth = 1.5 / scale;
     ctx.stroke();
   }
@@ -185,8 +186,9 @@ export function MapViewer({
   }, [grid, robotPose]);
 
   return (
-    <div ref={containerRef} className="h-full w-full rounded-xl bg-slate-900 ring-1 ring-slate-700 shadow-2xl">
-      <canvas ref={canvasRef} className="h-full w-full rounded-xl" />
+    <div ref={containerRef} className={`map-canvas-container ${!grid || !grid.info.width || !grid.info.height ? 'is-empty' : ''}`}>
+      <canvas ref={canvasRef} className="map-canvas" aria-label="Live SLAM occupancy map" />
+      {(!grid || !grid.info.width || !grid.info.height) && <ViewerEmptyState kind="mapping" />}
     </div>
   );
 }

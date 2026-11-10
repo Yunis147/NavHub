@@ -3,6 +3,7 @@ import { Stage, Layer, Image as KonvaImage, Line } from 'react-konva';
 import type Konva from 'konva';
 import { getMapImageBuffer, saveMapImageBuffer } from '../services/api';
 import { parsePgm, encodePgm } from '../lib/pgm';
+import { Icon } from './Icon';
 
 interface MapEditorProps {
   mapName: string;
@@ -17,6 +18,8 @@ type Stroke = {
 
 export function MapEditor({ mapName, onClose }: MapEditorProps) {
   const stageRef = useRef<Konva.Stage>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const savingRef = useRef(false);
 
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const [htmlImageElement, setHtmlImageElement] = useState<HTMLImageElement | null>(null);
@@ -27,6 +30,41 @@ export function MapEditor({ mapName, onClose }: MapEditorProps) {
   const [brushMode, setBrushMode] = useState<'draw' | 'erase'>('draw');
   const [isDrawing, setIsDrawing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  savingRef.current = isSaving;
+
+  // Keep keyboard focus inside the editor and return it to its opener on close.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialog.querySelector<HTMLButtonElement>('button')?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !savingRef.current) {
+        event.preventDefault();
+        onClose();
+      }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"]'));
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    dialog.addEventListener('keydown', handleKeyDown);
+    return () => {
+      dialog.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [onClose]);
 
   // Layout limits for the Konva stage viewport
   const VIEWPORT_SIZE = 600;
@@ -159,174 +197,26 @@ export function MapEditor({ mapName, onClose }: MapEditorProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 transition-all">
-      <div className="flex w-full max-w-5xl flex-col rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-        {/* Header */}
-        <div className="border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Map Editor</h3>
-              <p className="text-sm text-slate-400 mt-1">Editing map: <span className="font-mono text-emerald-400">{mapName}</span></p>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={isSaving}
-              className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-600 transition-colors disabled:opacity-50"
-            >
-              ✕ Close
-            </button>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex flex-1 gap-6 p-6">
-          {/* Canvas area */}
-          <div className="flex-1 flex flex-col rounded-xl bg-slate-800 border border-slate-700 overflow-hidden shadow-inner">
-            <div className="flex-1 flex items-center justify-center bg-slate-950 p-4 relative">
-              {htmlImageElement && imageSize ? (
-                <div className="bg-slate-900 ring-2 ring-slate-800 rounded-lg overflow-hidden shadow-xl"
-                  style={{ width: imageSize.width * scale, height: imageSize.height * scale }}
-                >
-                  <Stage
-                    ref={stageRef}
-                    width={imageSize.width * scale}
-                    height={imageSize.height * scale}
-                    scaleX={scale}
-                    scaleY={scale}
-                    onMouseDown={handleMouseDown}
-                    onMouseUp={handleMouseUp}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseUp} // Stop drawing if mouse leaves canvas
-                  >
-                    <Layer>
-                      <KonvaImage image={htmlImageElement} />
-                      {strokes.map((stroke, i) => (
-                        <Line
-                          key={i}
-                          points={stroke.points}
-                          stroke={stroke.tool === 'draw' ? 'black' : '#FEFEFE'}
-                          strokeWidth={stroke.size}
-                          tension={0}
-                          lineCap="round"
-                          lineJoin="round"
-                        />
-                      ))}
-                    </Layer>
-                  </Stage>
-                </div>
-              ) : parseError ? (
-                <div className="flex flex-col items-center gap-2 text-red-400">
-                  <svg className="h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-sm">{parseError}</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3 text-slate-400">
-                  <svg className="h-10 w-10 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <p className="text-sm font-medium animate-pulse">Loading Map Images...</p>
-                </div>
-              )}
+    <div className="editor-overlay">
+      <div ref={dialogRef} className="editor-dialog" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+        <header className="editor-header"><div><div className="eyebrow">MAP EDITOR</div><h2 id="editor-title">{mapName}</h2></div><button type="button" onClick={onClose} disabled={isSaving} className="button secondary"><Icon name="close" size={15} />Close</button></header>
+        <div className="editor-layout">
+          <div className="editor-canvas-panel">
+            <div className="editor-canvas-label"><span>OCCUPANCY GRID</span><span>{imageSize ? `${imageSize.width} × ${imageSize.height} PX` : 'LOADING'}</span></div>
+            <div className="editor-canvas-area">
+              {htmlImageElement && imageSize ? <div style={{ width: imageSize.width * scale, height: imageSize.height * scale, flexShrink: 0 }}>
+                <Stage ref={stageRef} width={imageSize.width * scale} height={imageSize.height * scale} scaleX={scale} scaleY={scale} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onMouseMove={handleMouseMove} onMouseLeave={handleMouseUp}>
+                  <Layer><KonvaImage image={htmlImageElement} />{strokes.map((stroke, i) => <Line key={i} points={stroke.points} stroke={stroke.tool === 'draw' ? 'black' : '#FEFEFE'} strokeWidth={stroke.size} tension={0} lineCap="round" lineJoin="round" />)}</Layer>
+                </Stage>
+              </div> : parseError ? <div className="empty-state" role="alert"><Icon name="offline" size={26} /><p className="inline-error">{parseError}</p></div> : <div className="empty-state" role="status"><div className="loading-indicator" /><h3>Loading your map</h3><p>Preparing the saved occupancy grid for editing.</p></div>}
             </div>
           </div>
-
-          {/* Sidebar - Tools */}
-          <div className="w-56 space-y-5 rounded-xl bg-slate-800/80 border border-slate-700 p-5 overflow-y-auto">
-            <div>
-              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
-                Brush Tool
-              </div>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setBrushMode('draw')}
-                    className={`flex-1 rounded-lg px-2 py-2.5 text-xs font-medium transition-all shadow-sm ${
-                      brushMode === 'draw'
-                        ? 'bg-blue-600 text-white ring-2 ring-blue-500/50'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    ✏ Obstacle
-                  </button>
-                  <button
-                    onClick={() => setBrushMode('erase')}
-                    className={`flex-1 rounded-lg px-2 py-2.5 text-xs font-medium transition-all shadow-sm ${
-                      brushMode === 'erase'
-                        ? 'bg-emerald-600 text-white ring-2 ring-emerald-500/50'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    ⬜ Free
-                  </button>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-slate-300 font-medium">Brush Size</label>
-                    <span className="text-xs font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">{brushSize} px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="60"
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(Number(e.target.value))}
-                    className="w-full accent-blue-500"
-                  />
-                </div>
-
-                <button
-                  onClick={undo}
-                  disabled={strokes.length === 0}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                  </svg>
-                  Undo Last Stroke
-                </button>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-700 pt-5">
-              <div className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">
-                Map Legend
-              </div>
-              <div className="space-y-2.5 text-xs font-medium text-slate-300">
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-4 rounded-sm bg-white ring-1 ring-slate-400 shadow-sm" />
-                  <span>Free space</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-4 rounded-sm bg-black ring-1 ring-slate-600 shadow-sm" />
-                  <span>Obstacle</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-4 w-4 rounded-sm bg-[#CDCDCD] ring-1 ring-slate-600 shadow-sm" />
-                  <span>Unknown</span>
-                </div>
-              </div>
-            </div>
-
-            {parseError && (
-              <div className="rounded-lg bg-red-950/80 border border-red-900/50 p-3 text-xs text-red-400 font-medium">
-                {parseError}
-              </div>
-            )}
-
-            <div className="border-t border-slate-700 pt-5 mt-auto">
-              <button
-                onClick={() => void save()}
-                disabled={isSaving || !htmlImageElement}
-                className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isSaving ? 'Saving map...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
+          <aside className="editor-tools" aria-label="Map editing tools">
+            <div><h3>Brush tool</h3><div className="editor-brush-modes"><button type="button" onClick={() => setBrushMode('draw')} aria-pressed={brushMode === 'draw'} className={`button ${brushMode === 'draw' ? 'primary' : 'secondary'}`}><Icon name="edit" size={13} />Obstacle</button><button type="button" onClick={() => setBrushMode('erase')} aria-pressed={brushMode === 'erase'} className={`button ${brushMode === 'erase' ? 'primary' : 'secondary'}`}>Free space</button></div><div className="editor-brush-label"><label htmlFor="brush-size">Brush size</label><strong>{brushSize} px</strong></div><input id="brush-size" type="range" min="1" max="60" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} /><button type="button" onClick={undo} disabled={strokes.length === 0} className="button secondary full-width"><Icon name="rotateLeft" size={14} />Undo last stroke</button></div>
+            <div className="editor-legend"><h3>Map legend</h3><div><i style={{ background: '#fefefe' }} />Free space</div><div><i style={{ background: '#000' }} />Obstacle</div><div><i style={{ background: '#cdcdcd' }} />Unknown</div><p>Edits are saved at the original pixel resolution. Map scale and origin are preserved.</p></div>
+            {parseError && <p className="inline-error" role="alert">{parseError}</p>}
+            <button type="button" onClick={() => void save()} disabled={isSaving || !htmlImageElement} className="button primary full-width"><Icon name="save" size={15} />{isSaving ? 'Saving map…' : 'Save Changes'}</button>
+          </aside>
         </div>
       </div>
     </div>

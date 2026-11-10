@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { AppHeader } from './components/AppHeader';
 import TeleopPage from './pages/TeleopPage';
 import MappingPage from './pages/MappingPage';
 import NavigationPage from './pages/NavigationPage';
@@ -20,16 +21,21 @@ function NavHub() {
 
   return (
     <TeleopProvider value={teleop}>
-      <div className="flex min-h-screen flex-col">
+      <div className="app-shell">
         <Navbar />
-        <Routes>
-          <Route path="/teleop" element={<TeleopPage />} />
-          <Route path="/mapping" element={<MappingPage />} />
-          <Route path="/navigation" element={<NavigationPage />} />
-          <Route path="/points" element={<PointsPage />} />
-          <Route path="/maps" element={<MapsPage />} />
-          <Route path="/" element={<Navigate to="/teleop" replace />} />
-        </Routes>
+        <div className="app-main">
+          <AppHeader />
+          <main className="app-content">
+            <Routes>
+              <Route path="/teleop" element={<TeleopPage />} />
+              <Route path="/mapping" element={<MappingPage />} />
+              <Route path="/navigation" element={<NavigationPage />} />
+              <Route path="/points" element={<PointsPage />} />
+              <Route path="/maps" element={<MapsPage />} />
+              <Route path="/" element={<Navigate to="/teleop" replace />} />
+            </Routes>
+          </main>
+        </div>
       </div>
     </TeleopProvider>
   );

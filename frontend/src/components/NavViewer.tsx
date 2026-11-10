@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { ViewerEmptyState } from './WorkspaceUI';
 import type { Pose2D } from '../lib/tf2d';
 import type { OccupancyGrid } from '../hooks/useSlamMap';
 
@@ -62,7 +63,7 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
   const ch = canvas.height;
 
   // Dark background
-  ctx.fillStyle = '#0a0f1a';
+  ctx.fillStyle = '#101810';
   ctx.fillRect(0, 0, cw, ch);
 
   if (!grid || !bounds) {
@@ -125,12 +126,12 @@ function draw(canvas: HTMLCanvasElement, grid: OccupancyGrid | null, pose: Pose2
     ctx.closePath();
 
     const grad = ctx.createLinearGradient(-k, 0, k, 0);
-    grad.addColorStop(0, '#3b82f6');
-    grad.addColorStop(1, '#60a5fa');
+    grad.addColorStop(0, '#8ebd60');
+    grad.addColorStop(1, '#b9f582');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = '#1e40af';
+    ctx.strokeStyle = '#4c6635';
     ctx.lineWidth = 1.5 / scale;
     ctx.stroke();
 
@@ -295,17 +296,18 @@ export function NavViewer({
   };
 
   return (
-    <div ref={containerRef} className="h-full w-full rounded-xl bg-slate-900 ring-1 ring-slate-700 shadow-2xl relative cursor-crosshair">
+    <div ref={containerRef} className={`map-canvas-container ${!bounds ? 'is-empty' : ''}`} style={{ cursor: interactMode === 'view' ? 'default' : 'crosshair' }}>
       <canvas
         ref={canvasRef}
-        className="h-full w-full rounded-xl touch-none"
+        className="map-canvas touch-none" aria-label="Navigation map; select an interaction mode to set a pose"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
       />
+      {!bounds && <ViewerEmptyState kind="navigation" />}
       {interactMode !== 'view' && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/90 border border-slate-600 px-4 py-1.5 text-xs font-medium text-slate-200 shadow-lg pointer-events-none backdrop-blur animate-pulse">
+        <div className="interaction-instruction">
           Click and drag to set {interactMode === 'initial_pose' ? 'Initial Pose' : 'Goal Pose'}
         </div>
       )}

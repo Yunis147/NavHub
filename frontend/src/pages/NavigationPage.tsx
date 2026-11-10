@@ -9,7 +9,9 @@ import { publishInitialPose, sendNavGoal } from '../services/nav';
 import type { Pose2D } from '../lib/tf2d';
 import { ControlBanner } from '../components/ControlBanner';
 import { EStopButton } from '../components/EStopButton';
-import { ConnectionStatus } from '../components/ConnectionStatus';
+import { PageHeading, PanelHeading, RobotConnectionNotice } from '../components/WorkspaceUI';
+import { Icon } from '../components/Icon';
+import { WaypointPanel } from '../components/WaypointPanel';
 // We will build a NavViewer component shortly
 import { NavViewer } from '../components/NavViewer';
 
@@ -152,196 +154,36 @@ export default function NavigationPage() {
   }, [ros, navigating]);
 
   return (
-    <div className="flex h-[calc(100vh-57px)] bg-slate-950">
-      
-      {/* Left sidebar - Controls */}
-      <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-900">
-        <div className="space-y-4 p-4">
-          <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 shadow-lg">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              System Status
-            </div>
-            <ConnectionStatus />
-          </div>
-
-          <ControlBanner
-            hasControl={hasControl}
-            server={server}
-            error={error}
-            onTake={() => void take()}
-            onRelease={() => void give()}
-          />
-
-          {/* Navigation Controls */}
-          <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Autonomous Navigation
-              </div>
-            </div>
-            <div className="p-4 space-y-4">
-              <div className="mb-1 flex items-center gap-2">
-                {navigating ? (
-                  <>
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-sm font-semibold text-blue-400">Nav2 Active</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="h-2.5 w-2.5 rounded-full bg-slate-500" />
-                    <span className="text-sm font-semibold text-slate-400">Idle</span>
-                  </>
-                )}
-              </div>
-
-              {!navigating && (
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-slate-300">Select Map to Load:</label>
-                  <select
-                    value={selectedMap}
-                    onChange={(e) => setSelectedMap(e.target.value)}
-                    disabled={busy || maps.length === 0}
-                    className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  >
-                    {maps.length === 0 ? <option value="">No maps available...</option> : null}
-                    {maps.map(m => (
-                      <option key={m.name} value={m.name}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {navigating ? (
-                <button
-                  type="button"
-                  onClick={() => void handleStop()}
-                  disabled={busy}
-                  className="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-md hover:bg-slate-600 disabled:opacity-50 transition-colors"
-                >
-                  Stop Navigation
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleStart()}
-                  disabled={!hasControl || server.mode !== 'idle' || busy || !selectedMap}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 transition-colors"
-                >
-                  Start Nav2
-                </button>
-              )}
-              {navError && <div className="text-xs text-red-400">{navError}</div>}
-            </div>
-          </div>
-
-          {/* Interaction Mode */}
-          {navigating && (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden flex-shrink-0">
-               <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Interaction
-                </div>
-              </div>
-              <div className="p-4 space-y-2">
-                <button
-                  onClick={() => setInteractMode('view')}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'view' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                >
-                  👁️ View Only
-                </button>
-                <button
-                  onClick={() => setInteractMode('initial_pose')}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'initial_pose' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
-                >
-                  📍 Set Initial Pose
-                </button>
-                <button
-                  onClick={() => setInteractMode('goal_pose')}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${interactMode === 'goal_pose' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
-                >
-                  🎯 Send Nav Goal
-                </button>
-                {navGoalStatus && (
-                  <div className="mt-2 text-xs font-medium text-blue-400 bg-blue-900/20 px-3 py-2 rounded shadow-inner">
-                    🚀 Status: {navGoalStatus}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Waypoints Section */}
-          {navigating && (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden flex flex-col min-h-[250px]">
-              <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2 flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                  🚩 Waypoints
-                </div>
-                
-              </div>
-              <div className="p-4 flex flex-col gap-3 overflow-hidden flex-1">
-                {recordingWaypoint && (
-                  <div className="bg-slate-800 rounded-lg p-3 border border-indigo-500/50 shadow-inner">
-                    <div className="text-xs text-slate-300 mb-2">Saving current pose...</div>
-                    <div className="flex gap-2">
-                       <input
-                         autoFocus
-                         type="text"
-                         placeholder="Waypoint Name"
-                         value={newWaypointName}
-                         onChange={(e) => setNewWaypointName(e.target.value)}
-                         className="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
-                         onKeyDown={(e) => e.key === 'Enter' && handleRecordWaypoint()}
-                       />
-                       <button onClick={handleRecordWaypoint} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded text-sm shadow">Save</button>
-                       <button onClick={() => { setRecordingWaypoint(false); setNewWaypointName(''); }} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-sm">Cancel</button>
-                    </div>
-                  </div>
-                )}
-                <div className="overflow-y-auto pr-1 space-y-2 flex-1 custom-scrollbar">
-                  {waypoints.length === 0 && !recordingWaypoint ? (
-                    <div className="text-xs text-slate-500 text-center py-4">No waypoints saved for this map.</div>
-                  ) : (
-                    waypoints.map(wp => (
-                      <div key={wp.id} className="flex flex-col gap-2 rounded-lg bg-gradient-to-br from-slate-800 to-slate-800/80 p-3 shadow-md border border-slate-700/50 hover:border-indigo-500/50 transition-all group">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-white tracking-wide">{wp.name}</span>
-                          <button onClick={() => handleDeleteWaypoint(wp.id)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Waypoint">
-                            ✖
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between">
-                           <span className="text-[10px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-full shadow-inner border border-slate-700">[{wp.x.toFixed(2)}, {wp.y.toFixed(2)}, {(wp.yaw * 180 / Math.PI).toFixed(0)}°]</span>
-                           <button
-                             onClick={() => handleDispatchWaypoint(wp)}
-                             className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-md shadow-lg shadow-blue-900/50 flex flex-row items-center gap-1 transition-all active:scale-95"
-                           >
-                              <span>Go</span> <span>→</span>
-                           </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2">
-            <EStopButton onStop={onEStop} />
-          </div>
+    <div className="workspace-page mission-page">
+      <PageHeading eyebrow="AUTONOMOUS OPERATIONS" title="A clear path forward" description="Localize your robot. Choose a destination. Let navigation take over.">
+        <span className="workspace-tag"><span className={`status-dot ${navigating ? 'connected' : ''}`} />{navigating ? 'NAV2 ACTIVE' : 'NAV2 STANDBY'}</span>
+      </PageHeading>
+      <RobotConnectionNotice />
+      <div className="mission-layout">
+        <div className="mission-view panel viewport-panel">
+          <PanelHeading icon="route" title="Navigation workspace" trailing={<span className="micro-badge">2D · MAP FRAME</span>} />
+          <div className="viewport-body"><NavViewer grid={grid} robotPose={robotPose} interactMode={interactMode} onSetInitialPose={handleSetInitialPose} onSetGoalPose={handleSetGoalPose} /></div>
+          <div className="viewport-footer"><div className="viewport-legend"><span><i className="legend-swatch free" />Free space</span><span><i className="legend-swatch obstacle" />Obstacle</span><span><i className="legend-swatch robot" />Robot</span></div><span>{selectedMap ? selectedMap.toUpperCase() : 'NO MAP SELECTED'}</span></div>
         </div>
-      </div>
-
-      {/* Right side - Full-size advanced Nav2 viewer */}
-      <div className="flex flex-1 flex-col p-4">
-         <NavViewer
-           grid={grid}
-           robotPose={robotPose}
-           interactMode={interactMode}
-           onSetInitialPose={handleSetInitialPose}
-           onSetGoalPose={handleSetGoalPose}
-         />
+        <div className="mission-sidebar">
+          <EStopButton onStop={onEStop} />
+          <ControlBanner hasControl={hasControl} server={server} error={error} onTake={() => void take()} onRelease={() => void give()} />
+          <section className="panel">
+            <PanelHeading icon="map" title="Mission setup" trailing={<span className={`micro-badge ${navigating ? 'accent' : ''}`}>{navigating ? 'ACTIVE' : 'IDLE'}</span>} />
+            <div className="panel-body">
+              <div className="process-status"><span className={`status-dot ${navigating ? 'connected' : ''}`} /><strong>{navigating ? 'Nav2 Active' : 'Choose your environment'}</strong></div>
+              <p className="muted-text">Load a saved map, then set the initial pose to localize the robot.</p>
+              {!navigating && <><label className="field-label" htmlFor="mission-map">Saved map</label><select id="mission-map" value={selectedMap} onChange={e => setSelectedMap(e.target.value)} disabled={busy || maps.length === 0} className="field-input">{maps.length === 0 && <option value="">No maps available</option>}{maps.map(map => <option key={map.name} value={map.name}>{map.name}</option>)}</select></>}
+              {navigating ? <button type="button" onClick={() => void handleStop()} disabled={busy} className="button secondary full-width"><Icon name="stop" size={15} />Stop Navigation</button> : <button type="button" onClick={() => void handleStart()} disabled={!hasControl || server.mode !== 'idle' || busy || !selectedMap} className="button primary full-width"><Icon name="route" size={16} />{busy ? 'Starting…' : 'Start Nav2'}</button>}
+              {navError && <p className="inline-error" role="alert">{navError}</p>}
+            </div>
+          </section>
+          {navigating && <section className="panel"><PanelHeading icon="target" title="Map interaction" /><div className="panel-body"><div className="interaction-buttons"><button type="button" aria-pressed={interactMode === 'view'} onClick={() => setInteractMode('view')} className={`interaction-button ${interactMode === 'view' ? 'selected' : ''}`}><Icon name="eye" size={16} />View Only</button><button type="button" aria-pressed={interactMode === 'initial_pose'} onClick={() => setInteractMode('initial_pose')} className={`interaction-button ${interactMode === 'initial_pose' ? 'selected' : ''}`}><Icon name="pin" size={16} />Set Initial Pose</button>
+            <button type="button" aria-pressed={interactMode === 'goal_pose'} onClick={() => setInteractMode('goal_pose')} className={`interaction-button ${interactMode === 'goal_pose' ? 'selected' : ''}`}><Icon name="target" size={16} />Send Nav Goal</button>
+          </div><p className="muted-text" style={{ marginBottom: 0 }}>Select a tool, then click and drag on the map to set position and heading.</p>{navGoalStatus && <p role="status" className={['Aborted', 'EMERGENCY STOP'].includes(navGoalStatus) ? 'inline-error' : navGoalStatus === 'Succeeded' ? 'inline-success' : 'inline-warning'}>{navGoalStatus}</p>}</div></section>}
+          {navigating && <WaypointPanel waypoints={waypoints} recording={recordingWaypoint} name={newWaypointName} canRecord={!!robotPose} showRecord={false} onRecord={() => setRecordingWaypoint(true)} onNameChange={setNewWaypointName} onSave={() => void handleRecordWaypoint()} onCancel={() => { setRecordingWaypoint(false); setNewWaypointName(''); }} onDelete={id => void handleDeleteWaypoint(id)} onDispatch={handleDispatchWaypoint} />}
+          {!navigating && <section className="panel"><PanelHeading icon="route" title="Before you navigate" /><div className="panel-body"><ol className="mission-steps"><li><span>01</span>Take control and load a saved map</li><li><span>02</span>Set the robot's initial pose</li><li><span>03</span>Click a goal or dispatch a waypoint</li></ol></div></section>}
+        </div>
       </div>
     </div>
   );

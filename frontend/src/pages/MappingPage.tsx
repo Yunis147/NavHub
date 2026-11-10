@@ -8,7 +8,8 @@ import { ControlBanner } from '../components/ControlBanner';
 import { MappingControls } from '../components/MappingControls';
 import { MapViewer } from '../components/MapViewer';
 import { EStopButton } from '../components/EStopButton';
-import { ConnectionStatus } from '../components/ConnectionStatus';
+import { PageHeading, PanelHeading, RobotConnectionNotice } from '../components/WorkspaceUI';
+import { TeleopInstructions } from '../components/TeleopInstructions';
 
 import { KeyboardTeleop } from '../components/KeyboardTeleop';
 
@@ -27,112 +28,24 @@ export default function MappingPage() {
   }, [teleop, give]);
 
   return (
-    <div className="flex h-[calc(100vh-57px)] bg-slate-950">
-      <KeyboardTeleop
-        enabled={canDrive}
-        onTwist={teleop.setTwist}
-        onStop={teleop.stop}
-        speed={teleop.speed}
-        turn={teleop.turn}
-        onSpeedAdjust={teleop.adjustSpeed}
-      />
-      {/* Left sidebar - Controls */}
-      <div className="w-96 flex-shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-900">
-        <div className="space-y-4 p-4">
-          {/* Connection status at top */}
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              System Status
-            </div>
-            <ConnectionStatus />
-          </div>
-
-          {/* Control banner */}
-          <ControlBanner
-            hasControl={hasControl}
-            server={server}
-            error={error}
-            onTake={() => void take()}
-            onRelease={() => void give()}
-          />
-
-          {/* Mapping controls with save */}
-          <MappingControls hasControl={hasControl} token={token} mode={server.mode} />
-
-          {/* Drive instructions */}
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-4">
-            <div className="mb-3 text-sm font-semibold text-blue-400">
-              Drive While Mapping
-            </div>
-            <div className="space-y-2 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <kbd className="rounded bg-slate-700 px-2 py-1 font-mono text-xs font-semibold">W/S</kbd>
-                <span>Forward / Backward</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="rounded bg-slate-700 px-2 py-1 font-mono text-xs font-semibold">A/D</kbd>
-                <span>Strafe Left / Right</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="rounded bg-slate-700 px-2 py-1 font-mono text-xs font-semibold">Q/E</kbd>
-                <span>Rotate Left / Right</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="rounded bg-red-900/50 px-2 py-1 font-mono text-xs font-semibold text-red-300">X</kbd>
-                <span className="text-red-300">Emergency Stop</span>
-              </div>
-            </div>
-          </div>
-
-          {/* E-Stop */}
-          <EStopButton onStop={onEStop} />
-
-          {/* Map stats */}
-          {grid && (
-            <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Map Info
-              </div>
-              <div className="space-y-1 text-xs text-slate-300">
-                <div className="flex justify-between">
-                  <span>Resolution:</span>
-                  <span className="font-mono font-semibold">{grid.info.resolution.toFixed(3)} m/px</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Size:</span>
-                  <span className="font-mono font-semibold">
-                    {grid.info.width} × {grid.info.height}
-                  </span>
-                </div>
-                {robotPose && (
-                  <>
-                    <div className="mt-2 border-t border-slate-700 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Robot Pose
-                    </div>
-                    <div className="flex justify-between">
-                      <span>X:</span>
-                      <span className="font-mono font-semibold">{robotPose.x.toFixed(2)} m</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Y:</span>
-                      <span className="font-mono font-semibold">{robotPose.y.toFixed(2)} m</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Yaw:</span>
-                      <span className="font-mono font-semibold">{(robotPose.yaw * 180 / Math.PI).toFixed(1)}°</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+    <div className="workspace-page mission-page">
+      <KeyboardTeleop enabled={canDrive} onTwist={teleop.setTwist} onStop={teleop.stop} speed={teleop.speed} turn={teleop.turn} onSpeedAdjust={teleop.adjustSpeed} />
+      <PageHeading eyebrow="ENVIRONMENT INTELLIGENCE" title="Make room for exploration" description="Turn your surroundings into a map. One scan at a time.">
+        <span className="workspace-tag"><span className={`status-dot ${server.mode === 'mapping' ? 'connected' : ''}`} />{server.mode === 'mapping' ? 'MAPPING ACTIVE' : 'MAPPING STANDBY'}</span>
+      </PageHeading>
+      <RobotConnectionNotice />
+      <div className="mission-layout">
+        <div className="mission-view panel viewport-panel">
+          <PanelHeading icon="map" title="Live occupancy map" trailing={<span className="micro-badge">2D · MAP FRAME</span>} />
+          <div className="viewport-body"><MapViewer grid={grid} robotPose={robotPose} /></div>
+          <div className="viewport-footer"><div className="viewport-legend"><span><i className="legend-swatch free" />Free space</span><span><i className="legend-swatch obstacle" />Obstacle</span><span><i className="legend-swatch robot" />Robot</span></div><span>{grid ? `${grid.info.width} × ${grid.info.height} PX` : 'AWAITING MAP'}</span></div>
         </div>
-      </div>
-
-      {/* Right side - Full-size map viewer */}
-      <div className="flex flex-1 flex-col">
-        <div className="flex-1 p-4">
-          <MapViewer grid={grid} robotPose={robotPose} />
+        <div className="mission-sidebar">
+          <EStopButton onStop={onEStop} />
+          <ControlBanner hasControl={hasControl} server={server} error={error} onTake={() => void take()} onRelease={() => void give()} />
+          <MappingControls hasControl={hasControl} token={token} mode={server.mode} />
+          {grid && <section className="panel"><PanelHeading icon="activity" title="Map telemetry" /><div className="panel-body info-grid"><div><span>Resolution</span><strong>{grid.info.resolution.toFixed(3)} m/px</strong></div><div><span>Dimensions</span><strong>{grid.info.width} × {grid.info.height}</strong></div>{robotPose && <><div><span>Position X</span><strong>{robotPose.x.toFixed(2)} m</strong></div><div><span>Position Y</span><strong>{robotPose.y.toFixed(2)} m</strong></div><div><span>Heading</span><strong>{(robotPose.yaw * 180 / Math.PI).toFixed(1)}°</strong></div></>}</div></section>}
+          <TeleopInstructions />
         </div>
       </div>
     </div>

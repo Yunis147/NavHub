@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Icon } from './Icon';
+import { PanelHeading } from './WorkspaceUI';
 import { startMapping, stopMapping, saveMap, type ServerState } from '../services/api';
 
 // Phase 2: start/stop slam_toolbox on the robot. Start needs the control token (Rule 10);
@@ -60,91 +62,26 @@ export function MappingControls({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Mapping control */}
-      <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            SLAM Mapping
-          </div>
+    <div className="stack">
+      <section className="panel">
+        <PanelHeading icon="scan" title="Mapping session" trailing={<span className={`micro-badge ${mapping ? 'accent' : ''}`}>{mapping ? 'ACTIVE' : 'STANDBY'}</span>} />
+        <div className="panel-body">
+          <div className="process-status"><span className={`status-dot ${mapping ? 'connected' : ''}`} /><strong>{mapping ? 'SLAM Active' : 'Ready to explore'}</strong></div>
+          <p className="muted-text">{mapping ? 'Drive around to build your map. New scans appear in real time.' : 'Build a map of your environment using live LiDAR scans.'}</p>
+          {mapping ? <button type="button" onClick={() => void stop()} disabled={busy} className="button secondary full-width"><Icon name="stop" size={15} />Stop Mapping</button> : <button type="button" onClick={() => void start()} disabled={!hasControl || mode !== 'idle' || busy} className="button primary full-width"><Icon name="scan" size={16} />{busy ? 'Starting…' : 'Start Mapping'}</button>}
         </div>
-        <div className="p-4">
-          <div className="mb-3 flex items-center gap-2">
-            {mapping ? (
-              <>
-                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm font-semibold text-emerald-400">SLAM Active</span>
-              </>
-            ) : (
-              <>
-                <div className="h-2.5 w-2.5 rounded-full bg-slate-500" />
-                <span className="text-sm font-semibold text-slate-400">Idle</span>
-              </>
-            )}
-          </div>
-          <p className="mb-4 text-xs text-slate-400">
-            {mapping ? 'Drive around to build the map. The map updates in real-time.' : 'Start mapping to begin SLAM'}
-          </p>
-          {mapping ? (
-            <button
-              type="button"
-              onClick={() => void stop()}
-              disabled={busy}
-              className="w-full rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-md hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            >
-              Stop Mapping
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void start()}
-              disabled={!hasControl || mode !== 'idle' || busy}
-              className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 transition-colors"
-            >
-              Start Mapping
-            </button>
-          )}
+      </section>
+      {(mode === 'idle' || mapping) && <section className="panel">
+        <PanelHeading icon="save" title="Save your environment" />
+        <div className="panel-body">
+          <label className="field-label" htmlFor="map-name">Map name</label>
+          <input id="map-name" type="text" placeholder="e.g. ground_floor" value={mapName} onChange={e => setMapName(e.target.value)} disabled={busy} className="field-input" />
+          <button type="button" onClick={() => void save()} disabled={!hasControl || !mapName.trim() || busy} className="button primary full-width"><Icon name="save" size={15} />{busy ? 'Working…' : 'Save Map'}</button>
+          <p className="muted-text" style={{ marginBottom: 0 }}>Saved maps are ready to edit and use for navigation.</p>
+          {saveSuccess && <p className="inline-success" role="status">Map saved successfully.</p>}
         </div>
-      </div>
-
-      {/* Save Map section - shows after mapping stops or while mapping */}
-      {(mode === 'idle' || mapping) && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900/50 shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-4 py-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Save Map
-            </div>
-          </div>
-          <div className="p-4 space-y-3">
-            <input
-              type="text"
-              placeholder="Enter map name (e.g., room_1)"
-              value={mapName}
-              onChange={(e) => setMapName(e.target.value)}
-              disabled={busy}
-              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={!hasControl || !mapName.trim() || busy}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 transition-colors"
-            >
-              {busy ? 'Saving...' : 'Save Map'}
-            </button>
-            {error && (
-              <div className="rounded-lg bg-red-950/50 border border-red-900/50 px-3 py-2 text-xs text-red-400">
-                {error}
-              </div>
-            )}
-            {saveSuccess && (
-              <div className="rounded-lg bg-green-950/50 border border-green-900/50 px-3 py-2 text-xs text-green-400">
-                ✓ Map saved successfully!
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </section>}
+      {error && <p className="inline-error" role="alert">{error}</p>}
     </div>
   );
 }
